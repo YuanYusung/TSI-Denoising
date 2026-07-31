@@ -1,0 +1,14 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+build/
+*.egg-info/
+.venv/
+
+# Local validation code is not published with this repository.
+tests/
+
+# Tutorial data and regenerated outputs are distributed separately.
+raw_data_inputs.tar
+tutorial/**/input/
+tutorial/**/processed/
