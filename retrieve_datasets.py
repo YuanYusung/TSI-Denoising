@@ -1,4 +1,3 @@
-#!/Users/yusong/miniforge3/bin/python
 """Download and unpack the public tutorial inputs from the USTC Pan share.
 
 Existing dataset directories are left untouched, so the script is safe to run
