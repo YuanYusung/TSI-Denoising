@@ -1,7 +1,7 @@
 # TSI-Denoising
 
 > 一维线性密集台阵高频面波模态分离与三台干涉去噪工具包  
-> High Frequency surface-wave mode separation, and three-station interferometry denoising for dense 1-D arrays
+> High-frequency surface-wave mode separation, and three-station interferometry denoising for dense 1-D arrays
 
 [中文说明](#中文说明) · [English](#english)
 
@@ -28,7 +28,7 @@ TSI-Denoising 是一个面向科研和教学的 Python 程序包，用于处理�
 | 频率 | Hz |
 
 > [!IMPORTANT]
-> 公开教学输入数据不纳入代码仓库。运行 `python retrieve_datasets.py` 可下载并安全解压两个案例的 `input_public/` 数据；教程生成或复用的缓存位于 `processed_public/`。
+> 公开教学输入数据不纳入代码仓库。运行 `python retrieve_datasets.py` 可下载并安全解压两个案例的 `input_public/` 数据；教程生成或复用的缓存位于 `processed/`。
 
 ### 2. 仓库结构
 
@@ -37,14 +37,14 @@ TSI-Denoising/
 ├── src/tsi_denoising/              # Python 程序包
 │   ├── io/                         # SAC 目录读取
 │   ├── mode_separation/            # 极化与相位匹配分离
-│   ├── denoising/                  # 三台干涉与诊断绘图
+│   ├── denoising/                  # 三台干涉去噪
 │   ├── wavefield.py                # Wavefield 数据模型
 │   ├── preprocessing.py            # 共同预处理
 │   └── masw.py                     # MASW 计算与绘图
 ├── tutorial/
 │   ├── MARS_DAS/                   # Monterey 湾海底 DAS 单模态 Scholte 波案例
 │   └── RR_Array/                   # 跨 San Jacinto 断裂带密集台阵多模态瑞利波案例
-├── tests/                          # 单元测试
+├── retrieve_datasets.py            # 公开教学数据下载脚本
 ├── pyproject.toml                  # 包元信息和依赖
 ├── environment.yml                 # 推荐的 Conda 环境
 ├── requirements.txt                # 运行依赖
@@ -53,7 +53,7 @@ TSI-Denoising/
 
 ### 3. 安装与数据准备
 
-#### 6.1 获取程序
+#### 3.1 获取程序
 
 本项目通过 GitHub 分发。安装前请准备 [Git](https://git-scm.com/) 和 [Miniforge](https://github.com/conda-forge/miniforge)（或 Miniconda）。
 
@@ -62,7 +62,7 @@ git clone https://github.com/YuanYusung/TSI-Denoising.git
 cd TSI-Denoising
 ~~~
 
-#### 6.2 创建 Conda 环境
+#### 3.2 创建 Conda 环境
 
 项目根目录的 `environment.yml` 定义了推荐环境。首次安装时执行：
 
@@ -72,7 +72,7 @@ conda activate tsi-denoising
 python -m pip install -e .
 ~~~
 
-环境使用 Python 3.10，并包含 NumPy、SciPy、Matplotlib、ObsPy、JupyterLab、ipykernel 和 PyQt。PyQt 支持 RR Array Notebook 中 `%matplotlib qt` 的交互式频散曲线拾取；`pip install -e .` 会以可编辑模式安装程序包，修改仓库中的 Python 源码后无须重新安装。
+环境使用 Python 3.10，并包含 NumPy、SciPy、Matplotlib、ObsPy、JupyterLab、ipykernel 和 PyQt。PyQt 支持 RR Array Notebook 中 `%matplotlib qt` 的交互式参考频散曲线拾取；`pip install -e .` 会以可编辑模式安装程序包，修改仓库中的 Python 源码后无须重新安装。
 
 若不使用 Conda、但需要运行含交互拾取的教程，请改用：
 
@@ -82,7 +82,7 @@ python -m pip install -e ".[tutorial]"
 
 普通的非交互式工作流（例如直接提供 `reference_curve`）只需 `python -m pip install -e .`，无需安装 PyQt5。
 
-#### 6.3 使用 Jupyter 与验证安装
+#### 3.3 使用 Jupyter 与验证安装
 
 若要在 Notebook 中明确选择该环境，请注册内核：
 
@@ -96,7 +96,7 @@ python -m ipykernel install --user --name tsi-denoising --display-name "Python (
 python -c "import tsi_denoising; print('TSI-Denoising imported successfully')"
 ~~~
 
-#### 6.4 获取教学数据
+#### 3.4 获取教学数据
 
 公开 SAC 教学输入不随代码仓库发布。在项目根目录运行：
 
@@ -108,8 +108,7 @@ python retrieve_datasets.py
 `tutorial/RR_Array/input_public/` 和 `tutorial/MARS_DAS/input_public/`；已有目录不会被覆盖。
 它不会重新映射 SAC 中的原始台站名；RR Array 的四个分量使用完全相同的台站子集，
 并保留原始 `010` 与 `040` 台站及其与公开子集之间的台站对，供教程作为虚拟源或接收台站示例。
-教程缓存写入 `processed_public/`。如果维护者拥有未抽样的完整输入，可另行运行
-`prepare_tutorial_subsets.py` 重新生成公开子集。
+教程缓存写入 `processed/`。
 
 ### 4. 核心能力
 
@@ -160,7 +159,6 @@ SAC 台站对互相关函数
 - 二维台阵、弯曲测线或强横向不均匀介质可能不满足距离顺序和一维传播假设；
 - 极化分离要求 ZZ、ZR、RZ、RR 四个分量具有相同台站对、距离、采样率和时间轴；
 - ZR/RZ 符号、径向正方向和正负相关时间定义必须在数据制作阶段保持一致；
-- MASW 能量峰值不等同于自动完成模态阶次判定，仍需结合理论频散、极化和空间连续性；
 - TSI 不会自动消除模态交叉项，多模态数据应先进行可靠的模态分离；
 
 ### 7. 输入数据要求
@@ -220,7 +218,7 @@ SAC 台站对互相关函数
 全波场迭代去噪与质量控制
 ~~~
 
-完整步骤见 [MARS DAS 教程](tutorial/MARS_DAS/README.md) 和 [MARS DAS Notebook](tutorial/MARS_DAS/run_example_MARS_DAS.ipynb)。
+完整步骤见 [MARS DAS Notebook](tutorial/MARS_DAS/run_example_MARS_DAS.ipynb)。
 
 #### 8.2 四分量、多模态瑞利波数据
 
@@ -242,7 +240,7 @@ SAC 台站对互相关函数
 各目标模态分别进行三台干涉去噪与质量控制
 ~~~
 
-完整步骤见 [RR Array 教程](tutorial/RR_Array/README.md) 和 [RR Array Notebook](tutorial/RR_Array/run_example_RR_Array.ipynb)。
+完整步骤见 [RR Array Notebook](tutorial/RR_Array/run_example_RR_Array.ipynb)。
 
 > [!IMPORTANT]
 > 极化分离不等同于模态分离。逆进或顺进波场仍可能包含多个模态。将波场输入三台干涉前，应结合频散谱、参考频散曲线与空间连续性确认目标模态已可靠分离。
@@ -335,12 +333,10 @@ SAC 台站对互相关函数
 
 ### 11. 教程导航
 
-- [RR Array：多模态瑞利波分离与三台干涉去噪](tutorial/RR_Array/README.md)
-- [MARS DAS：单一主导 Scholte 波三台干涉去噪](tutorial/MARS_DAS/README.md)
 - [RR Array Notebook](tutorial/RR_Array/run_example_RR_Array.ipynb)
 - [MARS DAS Notebook](tutorial/MARS_DAS/run_example_MARS_DAS.ipynb)
 
-根 README 介绍通用接口和推荐工作流；两个教程 README 进一步讨论数据背景、参数选择、物理解释、质量控制和预期图件。
+根 README 介绍通用接口和推荐工作流；两个教程 Notebook 进一步讨论数据背景、参数选择、物理解释、质量控制和预期图件。
 
 ### 12. 性能与可重复性
 
@@ -426,7 +422,7 @@ The repository includes two teaching cases prepared for the **12th Seismological
 Unless an individual interface states otherwise, distances are in km, phase velocities in km/s, correlation times in s, and frequencies in Hz.
 
 > [!IMPORTANT]
-> Public teaching inputs are not included with the source repository. Run `python retrieve_datasets.py` to download and safely extract the two `input_public/` tutorial datasets. Each tutorial generates or reuses NPZ caches and results under `processed_public/`.
+> Public teaching inputs are not included with the source repository. Run `python retrieve_datasets.py` to download and safely extract the two `input_public/` tutorial datasets. Each tutorial generates or reuses NPZ caches and results under `processed/`.
 
 ### 2. Repository Structure
 
@@ -442,6 +438,7 @@ TSI-Denoising/
 ├── tutorial/
 │   ├── RR_Array/                   # Four-component Rayleigh-wave case
 │   └── MARS_DAS/                   # Submarine DAS Scholte-wave case
+├── retrieve_datasets.py            # Public tutorial-data downloader
 ├── pyproject.toml                  # Package metadata and runtime dependencies
 ├── environment.yml                 # Recommended Conda environment
 ├── requirements.txt                # Runtime dependencies
@@ -509,9 +506,7 @@ directories; existing directories are never overwritten. It preserves the
 original SAC station names. All four RR Array components use the same station
 subset, including the original `010` and `040` stations and their pairs with
 the public subset for use as virtual-source or receiver examples. Tutorial
-caches are written to `processed_public/`. Maintainers with the complete
-private inputs can separately run `prepare_tutorial_subsets.py` to regenerate
-the public subset.
+caches are written to `processed/`.
 
 ### 4. Main Capabilities
 
@@ -612,7 +607,7 @@ One-pair TSI diagnostic
 Iterative full-wavefield denoising and QC
 ~~~
 
-See the [MARS DAS tutorial](tutorial/MARS_DAS/README.md) and [MARS DAS notebook](tutorial/MARS_DAS/run_example_MARS_DAS.ipynb).
+See the [MARS DAS notebook](tutorial/MARS_DAS/run_example_MARS_DAS.ipynb).
 
 #### 8.2 Four-component, multimode Rayleigh-wave data
 
@@ -634,7 +629,7 @@ Confirm spatial and dispersive continuity of the target mode
 Denoise each target mode separately with TSI and QC
 ~~~
 
-See the [RR Array tutorial](tutorial/RR_Array/README.md) and [RR Array notebook](tutorial/RR_Array/run_example_RR_Array.ipynb).
+See the [RR Array notebook](tutorial/RR_Array/run_example_RR_Array.ipynb).
 
 > [!IMPORTANT]
 > Polarization separation is not modal separation. A retrograde or prograde wavefield can still contain multiple modes. Before TSI, verify reliable target-mode separation using dispersion images, a reference curve, and spatial continuity.
@@ -722,17 +717,15 @@ All save interfaces require an existing parent directory and refuse overwriting 
 
 ### 11. Tutorials
 
-- [RR Array: multimode Rayleigh-wave separation and TSI denoising](tutorial/RR_Array/README.md)
-- [MARS DAS: TSI denoising of a dominant Scholte-wave mode](tutorial/MARS_DAS/README.md)
 - [RR Array notebook](tutorial/RR_Array/run_example_RR_Array.ipynb)
 - [MARS DAS notebook](tutorial/MARS_DAS/run_example_MARS_DAS.ipynb)
 
-The root README covers common interfaces and workflows. The two tutorial READMEs cover data context, parameter selection, physical interpretation, QC, and expected figures.
+The root README covers common interfaces and workflows. The two tutorial notebooks cover data context, parameter selection, physical interpretation, QC, and expected figures.
 
 ### 12. Performance and Reproducibility
 
 - `MASW.compute(n_jobs=...)` and `denoise_wavefield_iteratively(n_jobs=...)` support multiprocessing. Start at `n_jobs=1`, then increase only as CPU and memory allow.
-- First-pass ingestion, preprocessing, MASW, and iterative denoising can take time. Save reusable tutorial NPZ products under `processed_public/`.
+- First-pass ingestion, preprocessing, MASW, and iterative denoising can take time. Save reusable tutorial NPZ products under `processed/`.
 - Four-component inputs must use identical preprocessing. Changing the frequency band, velocity window, polarization formula, reference curve, distance threshold, or TSI settings requires regenerating downstream caches.
 - For a publication, record package and input-data versions, frequency and velocity ranges, the velocity grid, distance threshold, iteration threshold, and stop reason.
 
