@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tsi-denoising"
+version = "0.1.0"
+description = "Surface-wave mode separation and three-station interferometry denoising"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "matplotlib>=3.7",
+    "numpy>=1.24",
+    "obspy>=1.4",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+tutorial = [
+    "PyQt5>=5.15",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["tsi_denoising", "tsi_denoising.*"]

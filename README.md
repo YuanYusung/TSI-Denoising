@@ -72,7 +72,15 @@ conda activate tsi-denoising
 python -m pip install -e .
 ~~~
 
-环境使用 Python 3.10，并包含 NumPy、SciPy、Matplotlib、ObsPy、JupyterLab 和 ipykernel。`pip install -e .` 会以可编辑模式安装程序包；修改仓库中的 Python 源码后，无须重新安装。
+环境使用 Python 3.10，并包含 NumPy、SciPy、Matplotlib、ObsPy、JupyterLab、ipykernel 和 PyQt。PyQt 支持 RR Array Notebook 中 `%matplotlib qt` 的交互式频散曲线拾取；`pip install -e .` 会以可编辑模式安装程序包，修改仓库中的 Python 源码后无须重新安装。
+
+若不使用 Conda、但需要运行含交互拾取的教程，请改用：
+
+~~~bash
+python -m pip install -e ".[tutorial]"
+~~~
+
+普通的非交互式工作流（例如直接提供 `reference_curve`）只需 `python -m pip install -e .`，无需安装 PyQt5。
 
 #### 6.3 使用 Jupyter 与验证安装
 
@@ -362,6 +370,10 @@ ZZ、ZR、RZ、RR 必须包含相同的规范化台站对。检查是否有缺�
 
 构造 `MASW(wavefield)` 只保存配置。请先调用 `.compute()`，再调用 `.plot()`。
 
+#### `%matplotlib qt` 或手工频散曲线拾取无法启动
+
+RR Array Notebook 的手工拾取需要 PyQt5 与本地交互式图形桌面。使用推荐的 Conda 环境，或以 `python -m pip install -e ".[tutorial]"` 安装教程可选依赖；在无图形界面的环境中，请向 `phase_match_separate()` 传入 `reference_curve` 以跳过 GUI 拾取。
+
 #### 保存时提示文件已存在
 
 默认行为用于保护已有结果。更换文件名，或在确认后传入 `overwrite=True`。
@@ -452,7 +464,15 @@ conda activate tsi-denoising
 python -m pip install -e .
 ~~~
 
-The environment uses Python 3.10 and includes NumPy, SciPy, Matplotlib, ObsPy, JupyterLab, and ipykernel. Editable installation makes local source changes immediately available without reinstalling.
+The environment uses Python 3.10 and includes NumPy, SciPy, Matplotlib, ObsPy, JupyterLab, ipykernel, and PyQt. PyQt supports interactive dispersion-curve picking with `%matplotlib qt` in the RR Array notebook. Editable installation makes local source changes immediately available without reinstalling.
+
+For a pip-only setup that runs tutorials with interactive picking, use:
+
+~~~bash
+python -m pip install -e ".[tutorial]"
+~~~
+
+For ordinary non-interactive workflows, including supplying `reference_curve` directly, `python -m pip install -e .` is sufficient and does not install PyQt5.
 
 #### 3.3 Use Jupyter and verify the package
 
@@ -726,6 +746,10 @@ The upper filter frequency must be strictly below half the sampling rate. Lower 
 #### MASW plotting asks for `compute()`
 
 `MASW(wavefield)` only stores configuration. Call `.compute()` before `.plot()`.
+
+#### `%matplotlib qt` or manual dispersion-curve picking does not start
+
+Manual picking in the RR Array notebook requires PyQt5 and a local interactive graphical desktop. Use the recommended Conda environment or install the tutorial extra with `python -m pip install -e ".[tutorial]"`. In a headless environment, pass `reference_curve` to `phase_match_separate()` to skip GUI picking.
 
 #### Saving reports that a file already exists
 

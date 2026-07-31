@@ -10,3 +10,4 @@ dependencies:
   - scipy>=1.10
   - jupyterlab
   - ipykernel
+  - pyqt>=5.15
