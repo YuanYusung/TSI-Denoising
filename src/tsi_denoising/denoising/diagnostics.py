@@ -148,7 +148,12 @@ def _proportional_ticks(start: float, stop: float) -> np.ndarray:
 
 
 def _demo_station_geometry(context):
-    """Return station coordinates, waveform scale, limits, and y ticks."""
+    """Return station coordinates, scale, limits, and real station ticks.
+
+    Tick targets are first spaced proportionally across the displayed station
+    range, then snapped to the nearest actual station.  This avoids labels
+    such as ``10.2`` when a sparse or non-consecutive station subset is used.
+    """
     try:
         positions = np.asarray(context.station_order, dtype=float)
     except (TypeError, ValueError):
@@ -157,8 +162,16 @@ def _demo_station_geometry(context):
     scale = 0.9 * (float(np.median(np.abs(steps))) if steps.size else 1.0)
     ymin = float(np.min(positions) - 2.0 * scale)
     ymax = float(np.max(positions) + 2.0 * scale)
-    ticks = _proportional_ticks(float(np.min(positions)), float(np.max(positions)))
-    return positions, steps, scale, ymin, ymax, ticks
+    target_ticks = _proportional_ticks(
+        float(np.min(positions)),
+        float(np.max(positions)),
+    )
+    tick_indices = np.unique(
+        [int(np.argmin(np.abs(positions - target))) for target in target_ticks]
+    )
+    ticks = positions[tick_indices]
+    labels = tuple(context.station_order[index] for index in tick_indices)
+    return positions, steps, scale, ymin, ymax, ticks, labels
 
 
 def _diagnostic_distance_ticks(context, station_positions: np.ndarray):
@@ -544,6 +557,7 @@ def denoise_station_pair_demo(
         ymin,
         ymax,
         station_ticks,
+        station_tick_labels,
     ) = _demo_station_geometry(context)
     target_first = station_positions[context.rank[first]]
     target_second = station_positions[context.rank[second]]
@@ -698,6 +712,7 @@ def denoise_station_pair_demo(
             )
         row_axes[0].set_ylabel("Station number", fontsize=_FONT_SIZES["axis"])
         row_axes[0].set_yticks(station_ticks)
+        row_axes[0].set_yticklabels(station_tick_labels)
         row_axes[0].text(
             display_tmax - 0.1,
             ymin + 0.1 * scale,

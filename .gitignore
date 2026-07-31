@@ -11,4 +11,6 @@ tests/
 # Tutorial data and regenerated outputs are distributed separately.
 raw_data_inputs.tar
 tutorial/**/input/
+tutorial/**/input_public/
 tutorial/**/processed/
+tutorial/**/processed_public/

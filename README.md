@@ -28,7 +28,7 @@ TSI-Denoising 是一个面向科研和教学的 Python 程序包，用于处理�
 | 频率 | Hz |
 
 > [!IMPORTANT]
-> 原始教学数据不纳入代码仓库。运行 `python retrieve_datasets.py` 可下载并安全解压两个案例的输入数据；`processed/` 中的缓存和结果由教程生成或复用。
+> 公开教学输入数据不纳入代码仓库。运行 `python retrieve_datasets.py` 可下载并安全解压两个案例的 `input_public/` 数据；教程生成或复用的缓存位于 `processed_public/`。
 
 ### 2. 仓库结构
 
@@ -98,13 +98,18 @@ python -c "import tsi_denoising; print('TSI-Denoising imported successfully')"
 
 #### 6.4 获取教学数据
 
-原始 SAC 教学数据不随代码仓库发布。在项目根目录运行：
+公开 SAC 教学输入不随代码仓库发布。在项目根目录运行：
 
 ~~~bash
 python retrieve_datasets.py
 ~~~
 
-脚本从公开数据源下载归档，并只解压缺失的 `tutorial/RR_Array/input/` 和 `tutorial/MARS_DAS/input/`；已有目录不会被覆盖。两个教程会在各自的 `processed/` 目录保存可再生成的 NPZ 缓存和结果。
+脚本从公开分享归档下载约一半台站的均匀抽样数据，并只解压缺失的
+`tutorial/RR_Array/input_public/` 和 `tutorial/MARS_DAS/input_public/`；已有目录不会被覆盖。
+它不会重新映射 SAC 中的原始台站名；RR Array 的四个分量使用完全相同的台站子集，
+并保留原始 `010` 与 `040` 台站及其与公开子集之间的台站对，供教程作为虚拟源或接收台站示例。
+教程缓存写入 `processed_public/`。如果维护者拥有未抽样的完整输入，可另行运行
+`prepare_tutorial_subsets.py` 重新生成公开子集。
 
 ### 4. 核心能力
 
@@ -215,7 +220,7 @@ SAC 台站对互相关函数
 全波场迭代去噪与质量控制
 ~~~
 
-完整步骤见 [MARS DAS 教程](tutorial/MARS_DAS/README.md) 和 [MARS DAS Notebook](tutorial/MARS_DAS/run.ipynb)。
+完整步骤见 [MARS DAS 教程](tutorial/MARS_DAS/README.md) 和 [MARS DAS Notebook](tutorial/MARS_DAS/run_example_MARS_DAS.ipynb)。
 
 #### 8.2 四分量、多模态瑞利波数据
 
@@ -237,7 +242,7 @@ SAC 台站对互相关函数
 各目标模态分别进行三台干涉去噪与质量控制
 ~~~
 
-完整步骤见 [RR Array 教程](tutorial/RR_Array/README.md) 和 [RR Array Notebook](tutorial/RR_Array/run.ipynb)。
+完整步骤见 [RR Array 教程](tutorial/RR_Array/README.md) 和 [RR Array Notebook](tutorial/RR_Array/run_example_RR_Array.ipynb)。
 
 > [!IMPORTANT]
 > 极化分离不等同于模态分离。逆进或顺进波场仍可能包含多个模态。将波场输入三台干涉前，应结合频散谱、参考频散曲线与空间连续性确认目标模态已可靠分离。
@@ -332,8 +337,8 @@ SAC 台站对互相关函数
 
 - [RR Array：多模态瑞利波分离与三台干涉去噪](tutorial/RR_Array/README.md)
 - [MARS DAS：单一主导 Scholte 波三台干涉去噪](tutorial/MARS_DAS/README.md)
-- [RR Array Notebook](tutorial/RR_Array/run.ipynb)
-- [MARS DAS Notebook](tutorial/MARS_DAS/run.ipynb)
+- [RR Array Notebook](tutorial/RR_Array/run_example_RR_Array.ipynb)
+- [MARS DAS Notebook](tutorial/MARS_DAS/run_example_MARS_DAS.ipynb)
 
 根 README 介绍通用接口和推荐工作流；两个教程 README 进一步讨论数据背景、参数选择、物理解释、质量控制和预期图件。
 
@@ -421,7 +426,7 @@ The repository includes two teaching cases prepared for the **12th Seismological
 Unless an individual interface states otherwise, distances are in km, phase velocities in km/s, correlation times in s, and frequencies in Hz.
 
 > [!IMPORTANT]
-> Raw teaching data are not included with the source repository. Run `python retrieve_datasets.py` to download and safely extract the two tutorial inputs. Each tutorial generates or reuses NPZ caches and results under `processed/`.
+> Public teaching inputs are not included with the source repository. Run `python retrieve_datasets.py` to download and safely extract the two `input_public/` tutorial datasets. Each tutorial generates or reuses NPZ caches and results under `processed_public/`.
 
 ### 2. Repository Structure
 
@@ -496,7 +501,17 @@ Run the following command from the repository root:
 python retrieve_datasets.py
 ~~~
 
-The script downloads the public archive and extracts only missing `tutorial/RR_Array/input/` and `tutorial/MARS_DAS/input/` directories; existing directories are never overwritten. Reproducible intermediate products belong in each tutorial's `processed/` directory.
+For public teaching and faster execution on ordinary computers, the download
+script retrieves a uniformly sampled subset containing about half of the
+stations and extracts only missing
+`tutorial/RR_Array/input_public/` and `tutorial/MARS_DAS/input_public/`
+directories; existing directories are never overwritten. It preserves the
+original SAC station names. All four RR Array components use the same station
+subset, including the original `010` and `040` stations and their pairs with
+the public subset for use as virtual-source or receiver examples. Tutorial
+caches are written to `processed_public/`. Maintainers with the complete
+private inputs can separately run `prepare_tutorial_subsets.py` to regenerate
+the public subset.
 
 ### 4. Main Capabilities
 
@@ -597,7 +612,7 @@ One-pair TSI diagnostic
 Iterative full-wavefield denoising and QC
 ~~~
 
-See the [MARS DAS tutorial](tutorial/MARS_DAS/README.md) and [MARS DAS notebook](tutorial/MARS_DAS/run.ipynb).
+See the [MARS DAS tutorial](tutorial/MARS_DAS/README.md) and [MARS DAS notebook](tutorial/MARS_DAS/run_example_MARS_DAS.ipynb).
 
 #### 8.2 Four-component, multimode Rayleigh-wave data
 
@@ -619,7 +634,7 @@ Confirm spatial and dispersive continuity of the target mode
 Denoise each target mode separately with TSI and QC
 ~~~
 
-See the [RR Array tutorial](tutorial/RR_Array/README.md) and [RR Array notebook](tutorial/RR_Array/run.ipynb).
+See the [RR Array tutorial](tutorial/RR_Array/README.md) and [RR Array notebook](tutorial/RR_Array/run_example_RR_Array.ipynb).
 
 > [!IMPORTANT]
 > Polarization separation is not modal separation. A retrograde or prograde wavefield can still contain multiple modes. Before TSI, verify reliable target-mode separation using dispersion images, a reference curve, and spatial continuity.
@@ -709,15 +724,15 @@ All save interfaces require an existing parent directory and refuse overwriting 
 
 - [RR Array: multimode Rayleigh-wave separation and TSI denoising](tutorial/RR_Array/README.md)
 - [MARS DAS: TSI denoising of a dominant Scholte-wave mode](tutorial/MARS_DAS/README.md)
-- [RR Array notebook](tutorial/RR_Array/run.ipynb)
-- [MARS DAS notebook](tutorial/MARS_DAS/run.ipynb)
+- [RR Array notebook](tutorial/RR_Array/run_example_RR_Array.ipynb)
+- [MARS DAS notebook](tutorial/MARS_DAS/run_example_MARS_DAS.ipynb)
 
 The root README covers common interfaces and workflows. The two tutorial READMEs cover data context, parameter selection, physical interpretation, QC, and expected figures.
 
 ### 12. Performance and Reproducibility
 
 - `MASW.compute(n_jobs=...)` and `denoise_wavefield_iteratively(n_jobs=...)` support multiprocessing. Start at `n_jobs=1`, then increase only as CPU and memory allow.
-- First-pass ingestion, preprocessing, MASW, and iterative denoising can take time. Save reusable NPZ products under `processed/`.
+- First-pass ingestion, preprocessing, MASW, and iterative denoising can take time. Save reusable tutorial NPZ products under `processed_public/`.
 - Four-component inputs must use identical preprocessing. Changing the frequency band, velocity window, polarization formula, reference curve, distance threshold, or TSI settings requires regenerating downstream caches.
 - For a publication, record package and input-data versions, frequency and velocity ranges, the velocity grid, distance threshold, iteration threshold, and stop reason.
 

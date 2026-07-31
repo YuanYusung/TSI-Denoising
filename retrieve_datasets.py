@@ -1,5 +1,5 @@
 #!/Users/yusong/miniforge3/bin/python
-"""Download and unpack the tutorial raw datasets from the USTC Pan share.
+"""Download and unpack the public tutorial inputs from the USTC Pan share.
 
 Existing dataset directories are left untouched, so the script is safe to run
 again after an interrupted or completed download.
@@ -15,11 +15,11 @@ import tarfile
 from pathlib import Path
 from urllib.request import Request, urlopen
 
-SHARE_ID = "26cffdd7fe3947babbfb"
+SHARE_ID = "b63c60ec1c2d46f5bc69"
 SHARE_DETAIL_URL = "https://pan.ustc.edu.cn/api/v1/share/get_share_detail"
 DATASETS = (
-    Path("tutorial/RR_Array/input"),
-    Path("tutorial/MARS_DAS/input"),
+    Path("tutorial/RR_Array/input_public"),
+    Path("tutorial/MARS_DAS/input_public"),
 )
 CHUNK_SIZE = 1024 * 1024
 
@@ -44,7 +44,7 @@ def download(url: str, destination: Path) -> None:
         request.add_header("Range", f"bytes={downloaded}-")
         print(f"Resuming from {downloaded / 1024 / 1024:.1f} MiB ...")
     else:
-        print("Downloading raw_data_inputs.tar ...")
+        print("Downloading public tutorial inputs ...")
 
     with urlopen(request, timeout=120) as response:
         if downloaded and response.status != 206:
@@ -95,7 +95,7 @@ def extract_dataset(archive: tarfile.TarFile, root: Path, dataset: Path) -> None
     archive.extractall(root, members=members)
 
 def remove_hidden_entries(dataset_dir: Path, root: Path) -> None:
-    """Remove dot-prefixed files and directories anywhere under an input directory."""
+    """Remove dot-prefixed files and directories under a public input directory."""
     if not dataset_dir.is_dir():
         return
 
@@ -141,15 +141,15 @@ def main() -> int:
             missing.append(dataset)
 
     if not missing:
-        print("Both raw datasets are already present; nothing to download.")
+        print("Both public tutorial inputs are already present; nothing to download.")
         return 0
 
-    archive_path = root / "raw_data_inputs.tar.part"
+    archive_path = root / "public_tutorial_inputs.tar.gz.part"
     completed = False
 
     try:
         download(fetch_download_url(), archive_path)
-        with tarfile.open(archive_path, "r") as archive:
+        with tarfile.open(archive_path, "r:*") as archive:
             for dataset in missing:
                 extract_dataset(archive, root, dataset)
         completed = True
@@ -164,7 +164,7 @@ def main() -> int:
     for dataset in DATASETS:
         remove_hidden_entries(root / dataset, root)
 
-    print("Raw data download completed.")
+    print("Public tutorial input download completed.")
     return 0
 
 
