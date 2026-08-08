@@ -458,7 +458,13 @@ RR Array Notebook 的手工拾取需要 PyQt5 与本地交互式图形桌面。�
 
 ### 14. 引用
 
-若您在研究中使用本程序包，请引用：
+若您在研究中使用本程序包，请优先引用软件归档：
+
+> Yuan, Y., & Qiu, H. (2026).  
+> *TSI-Denoising: High-frequency surface-wave mode separation and three-station interferometry denoising for dense 1-D arrays* (Version 0.1.0) [Software].  
+> Zenodo. <https://doi.org/10.5281/zenodo.21853472>
+
+三台干涉方法还请引用：
 
 > Qiu, H., Niu, F., & Qin, L. (2021).  
 > Denoising surface waves extracted from ambient noise recorded by 1-D linear array using three-station interferometry of direct waves.  
@@ -895,7 +901,13 @@ Saving protects existing outputs by default. Choose another name or explicitly s
 
 ### 14. Citation
 
-If you use this package in research, please cite:
+If you use this package in research, please cite the software archive:
+
+> Yuan, Y., & Qiu, H. (2026).  
+> *TSI-Denoising: High-frequency surface-wave mode separation and three-station interferometry denoising for dense 1-D arrays* (Version 0.1.0) [Software].  
+> Zenodo. <https://doi.org/10.5281/zenodo.21853472>
+
+For the three-station-interferometry method, please also cite:
 
 > Qiu, H., Niu, F., & Qin, L. (2021).  
 > Denoising surface waves extracted from ambient noise recorded by 1-D linear array using three-station interferometry of direct waves.  
