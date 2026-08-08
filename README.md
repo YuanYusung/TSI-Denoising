@@ -5,6 +5,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21853472.svg)](https://doi.org/10.5281/zenodo.21853472)
 
 [中文说明](#中文说明) · [English](#english)
 
