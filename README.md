@@ -1,9 +1,45 @@
 # TSI-Denoising
 
 > 一维线性密集台阵高频面波模态分离与三台干涉去噪工具包  
-> High-frequency surface-wave mode separation, and three-station interferometry denoising for dense 1-D arrays
+> High-frequency surface-wave mode separation and three-station interferometry denoising for dense 1-D arrays
+
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 [中文说明](#中文说明) · [English](#english)
+
+## 快速开始 / Quick start
+
+```bash
+git clone https://github.com/YuanYusung/TSI-Denoising.git
+cd TSI-Denoising
+python -m pip install ".[tutorial]"
+python retrieve_datasets.py
+jupyter lab tutorial/MARS_DAS/run_example_MARS_DAS.ipynb
+```
+
+教程总览见 [`tutorial/README.md`](tutorial/README.md)；
+默认教程路径不要求 GUI，RR Array的手工频散曲线拾取是可选步骤。
+
+The [tutorial overview](tutorial/README.md) contains the case-specific run
+instructions. The default tutorial path is headless; interactive RR dispersion
+picking is optional.
+
+最短的程序化入口如下；它读取 MARS DAS 教学数据，执行共同预处理并计算 MASW 频散图。
+The minimal programmatic entry point reads the MARS DAS teaching data, applies shared preprocessing, and computes a MASW image:
+
+```python
+from tsi_denoising import MASW, read_sac_directory
+
+wavefield = read_sac_directory(
+    "tutorial/MARS_DAS/input_public/RR"
+).preprocess(fmin=0.5, fmax=3.5, vmin=0.1, vmax=2.0)
+wavefield.print("MARS DAS / RR")
+
+masw = MASW(wavefield, fmin=0.5, fmax=3.5).compute(n_jobs=1)
+masw.print("MARS DAS / RR MASW")
+masw.plot()
+```
 
 ---
 
@@ -13,19 +49,18 @@
 
 TSI-Denoising 是一个面向科研和教学的 Python 程序包，用于处理一维线性密集台阵中的背景噪声互相关函数（ambient-noise cross-correlation，ANC）。程序将 ObsPy `Stream` 封装为经过验证的 `Wavefield` 处理对象，并提供从数据读取、预处理、频散分析、模态分离到三台干涉（three-station interferometry，TSI）迭代去噪的一套工作流。
 
+它解决的是一个明确而有限的问题：当高频面波 ANC 受到非相干噪声或多模态混叠影响时，先建立可检查的数据与几何契约，再按数据条件选择模态分离和 TSI 去噪路径。项目当前版本为 `0.1.0`（Alpha）。
+
 本仓库同时包含为**第十二届地震学算法和程序培训班**（2026 年 8 月 10–12 日）准备的两个教学案例：
 
 - **MARS DAS**：海底 DAS 单模态 Scholte 波的 TSI 去噪，
 - **RR Array**：跨断层密集台阵多模态瑞利波分离和分模态去噪。
 
-除非具体接口另有说明，程序统一使用以下单位：
+| 教学案例 | 输入条件 | 主要流程 | 可检查产物 |
+|---|---|---|---|
+| [MARS DAS](tutorial/MARS_DAS/README.md) | 单分量 RR；48 个台站、1,128 个公开台站对 | 共同预处理 → MASW → TSI 诊断与迭代去噪 | 波场图、MASW 图、迭代历史、版本化 NPZ |
+| [RR Array](tutorial/RR_Array/README.md) | ZZ/ZR/RZ/RR 四分量；每分量 23 个台站、253 个公开台站对 | 极化分离 → 相位匹配 → 分模态 TSI | 候选模态、参考频散曲线、M0/M1 去噪结果 |
 
-| 物理量 | 单位 |
-|---|---|
-| 距离 | km |
-| 相速度 | km/s |
-| 相关时间 | s |
-| 频率 | Hz |
 
 > [!IMPORTANT]
 > 公开教学输入数据不纳入代码仓库。运行 `python retrieve_datasets.py` 可下载并安全解压两个案例的 `input_public/` 数据；教程生成或复用的缓存位于 `processed/`。
@@ -45,42 +80,33 @@ TSI-Denoising/
 │   ├── MARS_DAS/                   # Monterey 湾海底 DAS 单模态 Scholte 波案例
 │   └── RR_Array/                   # 跨 San Jacinto 断裂带密集台阵多模态瑞利波案例
 ├── retrieve_datasets.py            # 公开教学数据下载脚本
-├── pyproject.toml                  # 包元信息和依赖
-├── environment.yml                 # 推荐的 Conda 环境
-├── requirements.txt                # 运行依赖
-└── README.md
+├── pyproject.toml                  # 包元信息及唯一依赖定义
+└── README.md                       # 中英文总入口
 ```
 
 ### 3. 安装与数据准备
 
 #### 3.1 获取程序
 
-本项目通过 GitHub 分发。安装前请准备 [Git](https://git-scm.com/) 和 [Miniforge](https://github.com/conda-forge/miniforge)（或 Miniconda）。
+本项目通过 GitHub 分发。安装前请准备 [Git](https://git-scm.com/)。
 
 ~~~bash
 git clone https://github.com/YuanYusung/TSI-Denoising.git
 cd TSI-Denoising
 ~~~
 
-#### 3.2 创建 Conda 环境
+#### 3.2 创建隔离环境并安装
 
-项目根目录的 `environment.yml` 定义了推荐环境。首次安装时执行：
-
-~~~bash
-conda env create -f environment.yml
-conda activate tsi-denoising
-python -m pip install -e .
-~~~
-
-环境使用 Python 3.10，并包含 NumPy、SciPy、Matplotlib、ObsPy、JupyterLab、ipykernel 和 PyQt。PyQt 支持 RR Array Notebook 中 `%matplotlib qt` 的交互式参考频散曲线拾取；`pip install -e .` 会以可编辑模式安装程序包，修改仓库中的 Python 源码后无须重新安装。
-
-若不使用 Conda、但需要运行含交互拾取的教程，请改用：
+项目要求 Python 3.10 或更高版本。`pyproject.toml` 是运行、教程和开发依赖的唯一定义来源。推荐先创建虚拟环境，再按用途安装：
 
 ~~~bash
-python -m pip install -e ".[tutorial]"
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install ".[tutorial]"
 ~~~
 
-普通的非交互式工作流（例如直接提供 `reference_curve`）只需 `python -m pip install -e .`，无需安装 PyQt5。
+`.[tutorial]` 安装程序包、JupyterLab、ipykernel 和 RR Array 可选交互拾取所需的 PyQt5。只使用 Python API、无需运行 Notebook 时，改用 `python -m pip install .`
 
 #### 3.3 使用 Jupyter 与验证安装
 
@@ -90,10 +116,10 @@ python -m pip install -e ".[tutorial]"
 python -m ipykernel install --user --name tsi-denoising --display-name "Python (TSI-Denoising)"
 ~~~
 
-打开教程 Notebook 后选择 `Python (TSI-Denoising)`。使用下列命令验证安装：
+打开教程 Notebook 后选择 `Python (TSI-Denoising)`。使用下列命令验证实际导入位置，并确认它未指向相邻的项目副本：
 
 ~~~bash
-python -c "import tsi_denoising; print('TSI-Denoising imported successfully')"
+python -c "from pathlib import Path; import tsi_denoising; print(Path(tsi_denoising.__file__).resolve())"
 ~~~
 
 #### 3.4 获取教学数据
@@ -104,50 +130,81 @@ python -c "import tsi_denoising; print('TSI-Denoising imported successfully')"
 python retrieve_datasets.py
 ~~~
 
-脚本从公开分享归档下载约一半台站的均匀抽样数据，并只解压缺失的
+为便于公开教学并缩短普通电脑上的运行时间，脚本从公开分享归档下载约一半台站的均匀抽样数据，并只解压缺失的
 `tutorial/RR_Array/input_public/` 和 `tutorial/MARS_DAS/input_public/`；已有目录不会被覆盖。
 它不会重新映射 SAC 中的原始台站名；RR Array 的四个分量使用完全相同的台站子集，
 并保留原始 `010` 与 `040` 台站及其与公开子集之间的台站对，供教程作为虚拟源或接收台站示例。
 教程缓存写入 `processed/`。
+当前公开子集的文件数量、采样信息和目录布局见
+[`tutorial/data_manifest.yml`](tutorial/data_manifest.yml)。
 
-### 4. 核心能力
+### 4. 核心能力与输出
 
-- 递归读取一个目录中的 SAC 互相关波形，并构造经过验证的 `Wavefield`；
-- 统一台站名来源、台站对方向、采样信息和距离元数据；
-- 对互相关函数进行正负时间对称化、速度窗 taper 和零相位带通滤波；
-- 使用相移法计算频率–相速度 MASW 能量图；
-- 根据 ZZ、ZR、RZ、RR 四分量极化关系分离逆进和顺进瑞利波；
-- 使用参考频散曲线执行相位匹配模态分离；
-- 对单个台站对生成 TSI 几何、输入波场和干涉结果诊断图；
-- 对整个波场进行串行或多进程迭代 TSI 去噪；
-- 使用 NPZ 文件保存和恢复波场、MASW 与去噪结果。
+| 能力 | 解决的问题 | 主要输出 |
+|---|---|---|
+| SAC 读取与波场契约 | 统一 source/receiver、台站对方向、采样和距离元数据，并尽早拒绝不一致输入 | 经过验证的 `Wavefield` |
+| 共同预处理 | 对称化正负相关时间，施加距离相关速度窗和零相位带通 | 可用于频散分析的波场 |
+| MASW 频散诊断 | 使用相移叠加检查目标频带内的相速度能量分布 | 频率–相速度归一化能量图 |
+| 多模态分离 | 组合四分量极化关系，并使用参考频散曲线执行相位匹配 | 逆进/顺进候选波场和目标模态波场 |
+| 三台干涉去噪 | 汇集满足几何条件的第三台站干涉结果，对单个台站对诊断并对全波场迭代 | `DenoisingResult`、迭代变化和 QC 图 |
+| 可重复性与缓存 | 将波场、MASW 和去噪诊断写入版本化压缩 NPZ，默认保护已有文件 | 可重新加载的中间产物和最终结果 |
 
-### 5. 处理流程
+### 5. 系统架构与处理流程
 
-```text
-SAC 台站对互相关函数
-          |
-          v
-读取、规范化和验证
-          |
-          v
-共同预处理与 MASW 频散诊断
-          |
-          +----------------------+
-          |                      |
-          v                      v
-目标频带内单一模态主导数据          四分量、多模态数据
-例如 MARS DAS                    例如 RR Array
-      |                             |
-      |                          极化分离
-      |                             |
-      |                        相位匹配模态分离
-      |                             |
-      +-------------+---------------+
-                    |
-           分模态三台干涉去噪与 QC
+#### 5.1 程序包架构
 
+```mermaid
+flowchart TD
+    API["tsi_denoising 顶层 API"]
+    IO["io：SAC 发现与读取"]
+    WF["Wavefield：数据、几何与验证契约"]
+    PRE["preprocessing：对称化、速度窗、带通"]
+    MASW["MASW：频率–相速度成像"]
+    MODE["mode_separation：极化与相位匹配"]
+    TSI["denoising：诊断与迭代三台干涉"]
+    NPZ[("版本化 NPZ")]
+
+    API --> IO --> WF
+    API --> PRE
+    API --> MASW
+    API --> MODE
+    API --> TSI
+    WF --> PRE --> MASW
+    PRE --> MODE --> TSI
+    PRE --> TSI
+    WF --> NPZ
+    MASW --> NPZ
+    TSI --> NPZ
 ```
+
+`Wavefield` 是各模块共享的数据边界：读取阶段先规范化并验证 ObsPy Trace，后续模块围绕同一组台站对、距离、采样率和时间轴工作。用户应从 `tsi_denoising` 顶层导入公开接口，而不是依赖内部模块。
+
+#### 5.2 核心工作流程
+
+```mermaid
+flowchart LR
+    SAC["SAC 台站对 ANC"] --> VALIDATE["读取、规范化与验证"]
+    VALIDATE --> PREP["共同预处理"]
+    PREP --> DISP["波场与 MASW 诊断"]
+    DISP --> DECISION{"目标频带是否由单一模态主导？"}
+    DECISION -->|"是"| DEMO["单台站对 TSI 诊断"]
+    DECISION -->|"否，且有四分量"| POL["逆进/顺进极化分离"]
+    POL --> PHASE["参考曲线相位匹配"]
+    PHASE --> DEMO
+    DEMO --> ITER["全波场迭代 TSI"]
+    ITER --> QC["QC、迭代历史与 NPZ 结果"]
+```
+
+#### 5.3 技术栈
+
+| 层级 | 技术 | 用途 |
+|---|---|---|
+| 语言与打包 | Python ≥ 3.10、setuptools、`pyproject.toml` | `src` 布局程序包、依赖定义和 wheel 构建；CI 当前检查 3.10 与 3.12 |
+| 地震数据 | ObsPy ≥ 1.4 | SAC 读写、Trace/Stream 元数据和信号处理基础 |
+| 数值计算 | NumPy ≥ 1.24、SciPy ≥ 1.10 | FFT、滤波、插值、数组运算与相位处理 |
+| 可视化 | Matplotlib ≥ 3.7 | 波场、MASW、窄带和迭代诊断图 |
+| 教学环境 | JupyterLab、ipykernel、可选 PyQt5 | 可复现教程与可选交互式频散曲线拾取 |
+| 工程质量 | Ruff、GitHub Actions | 基础 lint 和 Python 3.10/3.12 wheel 检查 |
 
 
 ### 6. 适用范围与限制
@@ -159,7 +216,8 @@ SAC 台站对互相关函数
 - 二维台阵、弯曲测线或强横向不均匀介质可能不满足距离顺序和一维传播假设；
 - 极化分离要求 ZZ、ZR、RZ、RR 四个分量具有相同台站对、距离、采样率和时间轴；
 - ZR/RZ 符号、径向正方向和正负相关时间定义必须在数据制作阶段保持一致；
-- TSI 不会自动消除模态交叉项，多模态数据应先进行可靠的模态分离；
+- MASW 振幅峰值不能自动确定模态阶次；应结合理论频散、极化特征与空间连续性进行判断；
+- TSI 不会自动消除模态交叉项，多模态数据应先进行可靠的模态分离。
 
 ### 7. 输入数据要求
 
@@ -264,6 +322,7 @@ SAC 台站对互相关函数
 |  | `fmin`、`fmax` | 零相位带通滤波下限与上限；要求 `0 < fmin < fmax < Nyquist`。 |
 |  | `vmin`、`vmax` | 距离相关速度窗范围；因果窗为 `distance / vmax` 至 `distance / vmin`。 |
 |  | `taper_fraction` | 速度窗两端 taper 比例，必须位于 0 至 0.5。 |
+| `Wavefield.print(label="Wavefield", *, status=None)` | `label`、`status` | 打印台站、台站对、采样、时间轴和距离范围摘要；`status` 可附加缓存或处理状态。 |
 
 `Wavefield.preprocess()` 使用同一组参数，但会原地替换对象内的数据并返回自身；需要保留原始波场时应使用 `preprocess_stream()`。
 
@@ -277,6 +336,7 @@ SAC 台站对互相关函数
 |  | `padding_factor` | FFT 零填充倍数，必须是不小于 1 的整数；增大仅加密频率采样。 |
 |  | `dist_threshold` | 参与成像的最小台间距；小于该值的记录被排除。 |
 | `MASW.compute(n_jobs=1)` | `n_jobs` | 频率行计算的进程数；从 1 开始验证，再按 CPU 与内存提高。 |
+| `MASW.print(label="MASW")` | `label` | 打印已计算能量图的网格范围和最强归一化能量位置；调用前必须完成 `.compute()` 或加载已计算缓存。 |
 | `compute_masw(wavefield, velomin=0.2, velomax=2.5, fmin=0.5, fmax=5.0, padding_factor=5, *, velocities=None, dist_threshold=0.2, n_jobs=1)` | `velomin`、`velomax` | 未提供 `velocities` 时生成 231 点线性速度网格的范围。 |
 |  | 其余参数 | 与 `MASW` 构造参数和 `.compute(n_jobs=...)` 含义相同；直接返回 `(velocity, frequency, amplitude)`。 |
 
@@ -295,6 +355,7 @@ SAC 台站对互相关函数
 |  | `keep_positive` | 默认 `True`，保留正时间支并衰减负时间支；`False` 时反向处理。 |
 |  | `return_reference` | 默认 `False`；为 `True` 时返回 `(separated_wavefield, used_curve)`。 |
 |  | `masw_cache_path` | 可选、已完成计算的 MASW NPZ；与 `reference_curve` 互斥。 |
+| `print_reference_curve(reference_curve, label="Reference curve")` | `reference_curve`、`label` | 验证并打印参考曲线点数、频率范围和相速度范围。 |
 
 #### 9.4 三台干涉去噪与结果绘图
 
@@ -308,16 +369,18 @@ SAC 台站对互相关函数
 |  | `periods`、`time_limits` | 诊断图高斯窄带周期序列和显示相关时间范围。 |
 | `denoise_wavefield_iteratively(wavefield, example_pair, *, threshold, first_iteration_convolution, max_iterations=6, sqrt_spectrum=True, taper_output=False, fmin=0.5, fmax=5.0, distance_threshold=0.0, signal_vmin=0.2, signal_vmax=2.0, window_padding=0.2, n_jobs=1)` | `wavefield`、`example_pair` | 必填目标波场与代表性台站对；每轮输出都会峰值归一化。 |
 |  | `threshold` | 必填、非负的全波场相对 L2 变化阈值；变化不大于该值即停止。 |
-|  | `first_iteration_convolution` | 必填布尔值；控制第一轮是否加入内侧卷积。后续各轮始终同时使用外侧互相关和内侧卷积。 |
+|  | `first_iteration_convolution` | 必填布尔值；控制第一轮是否加入内侧卷积。设为 `False` 时，第一轮中目标间距大于台阵最大 pair 间距三分之二的记录不做干涉叠加，输出整条 NaN 波形；后续各轮开启卷积并重新尝试处理。 |
 |  | `max_iterations` | 最大完成迭代次数，默认 6。 |
-|  | `sqrt_spectrum`、`taper_output`、`fmin`、`fmax` | 与单台站对诊断中的同名参数含义一致。 |
+|  | `sqrt_spectrum`、`taper_output`、`fmin`、`fmax` | `sqrt_spectrum` 每轮生效；`taper_output=True` 及其频带参数只应用于第一轮输出，后续轮次不重复速度窗和带通。 |
 |  | `distance_threshold` | 参与候选叠加的最小台间距，默认 0 km。 |
 |  | `signal_vmin`、`signal_vmax`、`window_padding` | TSI 信号窗范围及余量，默认 0.2 km/s、2.0 km/s 和 0.2 s。 |
 |  | `n_jobs` | 台站对计算进程数，默认 1。 |
 | `plot_denoised_result(wavefield, result, *, periods=(0.8, 0.3), time_limits=(-2.0, 8.0), jitter_duplicate_distances=True)` | `wavefield`、`result` | 必填原始波场与对应 `DenoisingResult`；绘制窄带前后波场、示例台站对和迭代历史。 |
 |  | `periods`、`time_limits`、`jitter_duplicate_distances` | 控制窄带周期、显示时窗和相同距离记录的稳定小偏移。 |
 
-`denoise_wavefield_iteratively()` 返回 `DenoisingResult`。其 `iterations`、`relative_changes`、`converged` 与 `stop_reason` 分别提供完成轮数、每轮变化、是否达到阈值及停止原因（`"threshold"` 或 `"max_iterations"`）。
+`denoise_wavefield_iteratively()` 返回 `DenoisingResult`。其 `iterations`、`relative_changes`、`converged` 与 `stop_reason` 分别提供完成轮数、每轮变化、是否达到阈值及停止原因（`"threshold"` 或 `"max_iterations"`）；调用 `result.print(label="TSI denoising")` 可打印这些诊断摘要。
+
+全 NaN 行只表示该 pair 在对应迭代中没有可用去噪结果；部分 NaN 行和无穷值仍被拒绝。计算全波场相对 L2 变化时，全 NaN 行按零处理。如果只运行一轮且关闭第一轮卷积，最终波场中超过上述距离界限的 pair 会保留为全 NaN 行。
 
 ### 10. NPZ 持久化
 
@@ -333,17 +396,30 @@ SAC 台站对互相关函数
 
 ### 11. 教程导航
 
+- [教程总览](tutorial/README.md)
+- [MARS DAS 案例说明](tutorial/MARS_DAS/README.md)
+- [RR Array 案例说明](tutorial/RR_Array/README.md)
 - [RR Array Notebook](tutorial/RR_Array/run_example_RR_Array.ipynb)
 - [MARS DAS Notebook](tutorial/MARS_DAS/run_example_MARS_DAS.ipynb)
 
 根 README 介绍通用接口和推荐工作流；两个教程 Notebook 进一步讨论数据背景、参数选择、物理解释、质量控制和预期图件。
 
-### 12. 性能与可重复性
+### 12. 性能、开发与可重复性
 
 - `MASW.compute(n_jobs=...)` 和 `denoise_wavefield_iteratively(n_jobs=...)` 支持多进程。建议先以 `n_jobs=1` 验证，再根据 CPU 与内存提高进程数。
 - 首次读取、预处理、MASW 与迭代去噪可能耗时较长。建议在 `processed/` 保存 NPZ，并在后续会话中复用。
 - 四分量数据必须使用一致的预处理参数；修改频带、速度窗、极化公式、参考频散、距离阈值或 TSI 参数后，应重新生成相应下游缓存。
 - 发表结果时，应记录程序版本、输入数据版本、频带、速度范围、相速度网格、距离阈值、迭代阈值与停止原因。
+
+本地开发安装与仓库级检查：
+
+```bash
+python -m pip install -e ".[dev,tutorial]"
+python -m ruff check --isolated --select E4,E7,E9,F retrieve_datasets.py tutorial/_paths.py
+python -m pip wheel . --no-deps --wheel-dir /tmp/tsi-denoising-wheel
+```
+
+这些检查覆盖所列脚本的基础 lint 和 wheel 构建，但不等同于完整教学数据的科学算法验证。欢迎通过 [Issue](https://github.com/YuanYusung/TSI-Denoising/issues) 报告可复现问题，或提交范围清晰、包含相应验证与文档更新的 Pull Request。
 
 ### 13. 常见问题
 
@@ -373,7 +449,7 @@ ZZ、ZR、RZ、RR 必须包含相同的规范化台站对。检查是否有缺�
 
 #### `%matplotlib qt` 或手工频散曲线拾取无法启动
 
-RR Array Notebook 的手工拾取需要 PyQt5 与本地交互式图形桌面。使用推荐的 Conda 环境，或以 `python -m pip install -e ".[tutorial]"` 安装教程可选依赖；在无图形界面的环境中，请向 `phase_match_separate()` 传入 `reference_curve` 以跳过 GUI 拾取。
+RR Array Notebook 的手工拾取需要 PyQt5 与本地交互式图形桌面。使用 `python -m pip install ".[tutorial]"` 安装教程可选依赖；在无图形界面的环境中，请向 `phase_match_separate()` 传入 `reference_curve` 以跳过 GUI 拾取。
 
 #### 保存时提示文件已存在
 
@@ -388,13 +464,17 @@ RR Array Notebook 的手工拾取需要 PyQt5 与本地交互式图形桌面。�
 > *Journal of Geophysical Research: Solid Earth*, **126**, e2021JB021712.  
 > <https://doi.org/10.1029/2021JB021712>
 
-示例数据集的相关论文：
+若使用 MARS DAS 示例数据，还请引用：
 
 > Yuan, Y., Qiu, H., Chi, B., & Qin, L. (2026).  
 > *Mitigating the Resolution–SNR Trade-Off in DAS Ambient Noise Imaging: Application to Monterey Bay*.  
 > Manuscript under review at *Journal of Geophysical Research: Solid Earth*.
 
-### 15. 作者
+### 15. 许可证与作者
+
+程序代码采用 [MIT License](LICENSE)。观测数据不自动适用该软件许可证；使用、再分发或归档发表前应确认相关数据权利。
+
+作者：
 
 **袁宇嵩（Yusong Yuan）**  
 中国地质大学（武汉）  
@@ -414,12 +494,17 @@ RR Array Notebook 的手工拾取需要 PyQt5 与本地交互式图形桌面。�
 
 TSI-Denoising is a research and teaching Python package for ambient-noise cross-correlation (ANC) waveforms recorded by dense 1-D arrays. It wraps ObsPy `Stream` objects in a validated `Wavefield` model and provides a connected workflow for data ingestion, preprocessing, dispersion diagnosis, modal separation, and iterative three-station interferometry (TSI) denoising.
 
+It addresses a deliberately narrow problem: when high-frequency surface-wave ANC is degraded by incoherent noise or multimode interference, establish an inspectable data and geometry contract first, then choose modal separation and TSI denoising according to the data. The current version is `0.1.0` (Alpha).
+
 The repository includes two teaching cases prepared for the **12th Seismological Algorithms and Programs Training Course** (10–12 August 2026):
 
 - **MARS DAS**: TSI denoising of a dominant Scholte-wave mode in submarine DAS data;
 - **RR Array**: multimode Rayleigh-wave separation and mode-by-mode TSI denoising in a dense fault-crossing array.
 
-Unless an individual interface states otherwise, distances are in km, phase velocities in km/s, correlation times in s, and frequencies in Hz.
+| Tutorial | Input conditions | Main workflow | Inspectable products |
+|---|---|---|---|
+| [MARS DAS](tutorial/MARS_DAS/README.md) | Single RR component; 48 stations and 1,128 public pairs | Shared preprocessing → MASW → TSI diagnosis and iterative denoising | Wavefield and MASW figures, iteration history, versioned NPZ |
+| [RR Array](tutorial/RR_Array/README.md) | ZZ/ZR/RZ/RR; 23 stations and 253 public pairs per component | Polarization separation → phase matching → mode-specific TSI | Candidate modes, reference curves, and M0/M1 results |
 
 > [!IMPORTANT]
 > Public teaching inputs are not included with the source repository. Run `python retrieve_datasets.py` to download and safely extract the two `input_public/` tutorial datasets. Each tutorial generates or reuses NPZ caches and results under `processed/`.
@@ -436,45 +521,36 @@ TSI-Denoising/
 │   ├── preprocessing.py            # Shared preprocessing
 │   └── masw.py                     # MASW calculation and plotting
 ├── tutorial/
-│   ├── RR_Array/                   # Four-component Rayleigh-wave case
-│   └── MARS_DAS/                   # Submarine DAS Scholte-wave case
+│   ├── MARS_DAS/                   # Submarine DAS, single-mode Scholte-wave case
+│   └── RR_Array/                   # Dense fault-crossing, multimode Rayleigh-wave case
 ├── retrieve_datasets.py            # Public tutorial-data downloader
-├── pyproject.toml                  # Package metadata and runtime dependencies
-├── environment.yml                 # Recommended Conda environment
-├── requirements.txt                # Runtime dependencies
-└── README.md
+├── pyproject.toml                  # Package metadata and sole dependency source
+└── README.md                       # Bilingual project entry point
 ~~~
 
 ### 3. Installation and Data Preparation
 
 #### 3.1 Get the source code
 
-Install [Git](https://git-scm.com/) and [Miniforge](https://github.com/conda-forge/miniforge) (or Miniconda), then clone the repository:
+This project is distributed through GitHub. Install [Git](https://git-scm.com/) before cloning the repository:
 
 ~~~bash
 git clone https://github.com/YuanYusung/TSI-Denoising.git
 cd TSI-Denoising
 ~~~
 
-#### 3.2 Create the Conda environment
+#### 3.2 Create an isolated environment and install
 
-The repository's `environment.yml` defines the recommended environment:
-
-~~~bash
-conda env create -f environment.yml
-conda activate tsi-denoising
-python -m pip install -e .
-~~~
-
-The environment uses Python 3.10 and includes NumPy, SciPy, Matplotlib, ObsPy, JupyterLab, ipykernel, and PyQt. PyQt supports interactive dispersion-curve picking with `%matplotlib qt` in the RR Array notebook. Editable installation makes local source changes immediately available without reinstalling.
-
-For a pip-only setup that runs tutorials with interactive picking, use:
+The package requires Python 3.10 or newer. `pyproject.toml` is the sole source of runtime, tutorial, and development dependencies. Create a virtual environment, then install according to the intended use:
 
 ~~~bash
-python -m pip install -e ".[tutorial]"
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install ".[tutorial]"
 ~~~
 
-For ordinary non-interactive workflows, including supplying `reference_curve` directly, `python -m pip install -e .` is sufficient and does not install PyQt5.
+`.[tutorial]` installs the package, JupyterLab, ipykernel, and PyQt5 for optional interactive picking in the RR Array notebook. For Python API use without notebooks, run `python -m pip install .`.
 
 #### 3.3 Use Jupyter and verify the package
 
@@ -484,15 +560,15 @@ To select this environment explicitly in Jupyter, register its kernel:
 python -m ipykernel install --user --name tsi-denoising --display-name "Python (TSI-Denoising)"
 ~~~
 
-Select `Python (TSI-Denoising)` in a tutorial notebook. Verify the installation with:
+Select `Python (TSI-Denoising)` in a tutorial notebook. Verify the actual import path; it must not point to a neighboring checkout:
 
 ~~~bash
-python -c "import tsi_denoising; print('TSI-Denoising imported successfully')"
+python -c "from pathlib import Path; import tsi_denoising; print(Path(tsi_denoising.__file__).resolve())"
 ~~~
 
 #### 3.4 Download the teaching data
 
-Run the following command from the repository root:
+Public SAC teaching inputs are not distributed with the source repository. Run the following command from the repository root:
 
 ~~~bash
 python retrieve_datasets.py
@@ -507,44 +583,76 @@ original SAC station names. All four RR Array components use the same station
 subset, including the original `010` and `040` stations and their pairs with
 the public subset for use as virtual-source or receiver examples. Tutorial
 caches are written to `processed/`.
+The expected subset counts and layout are recorded in
+[`tutorial/data_manifest.yml`](tutorial/data_manifest.yml).
 
-### 4. Main Capabilities
+### 4. Main Capabilities and Outputs
 
-- Recursively read SAC cross-correlations and construct validated `Wavefield` objects;
-- Normalize station-name sources, pair directions, sampling metadata, and distances;
-- Symmetrize correlations and apply distance-dependent velocity tapers and zero-phase band-pass filters;
-- Compute frequency–phase-velocity MASW images with phase-shift stacking;
-- Separate retrograde and prograde Rayleigh-wave components from ZZ, ZR, RZ, and RR data;
-- Extract a target mode by phase-matched filtering with a reference dispersion curve;
-- Diagnose the geometry, input gathers, and output of TSI for one station pair;
-- Iteratively denoise a complete wavefield serially or with multiple processes;
-- Save and restore wavefields, MASW products, and denoising results as NPZ files.
+| Capability | Problem addressed | Main output |
+|---|---|---|
+| SAC ingestion and wavefield contract | Normalize source/receiver names, pair directions, sampling, and distances while rejecting inconsistent inputs early | Validated `Wavefield` |
+| Shared preprocessing | Symmetrize correlation-time branches and apply a distance-dependent velocity taper and zero-phase band-pass | Analysis-ready wavefield |
+| MASW diagnosis | Inspect target-band phase-velocity energy with phase-shift stacking | Normalized frequency–phase-velocity image |
+| Multimode separation | Combine four-component polarization and reference-curve phase matching | Retrograde/prograde candidates and target-mode wavefields |
+| TSI denoising | Stack geometrically valid third-station interferograms for one-pair diagnosis and full-wavefield iteration | `DenoisingResult`, relative changes, and QC figures |
+| Reproducibility and caching | Persist wavefields, MASW products, and denoising diagnostics as protected, versioned compressed NPZ | Reloadable intermediate and final products |
 
-### 5. Processing Workflow
+### 5. Architecture and Processing Workflow
 
-~~~text
-SAC station-pair cross-correlations
-          |
-          v
-Read, normalize, and validate
-          |
-          v
-Shared preprocessing and MASW diagnosis
-          |
-          +-------------------------------+
-          |                               |
-          v                               v
-Single dominant mode in target band       Four-component, multimode data
-for example, MARS DAS                     for example, RR Array
-          |                               |
-          |                         Polarization separation
-          |                               |
-          |                         Phase-matched separation
-          |                               |
-          +---------------+---------------+
-                          |
-              Mode-specific TSI denoising and QC
-~~~
+#### 5.1 Package architecture
+
+```mermaid
+flowchart TD
+    API["Public tsi_denoising API"]
+    IO["io: SAC discovery and ingestion"]
+    WF["Wavefield: data, geometry, and validation contract"]
+    PRE["preprocessing: symmetry, velocity taper, band-pass"]
+    MASW["MASW: frequency–phase-velocity imaging"]
+    MODE["mode_separation: polarization and phase matching"]
+    TSI["denoising: diagnostics and iterative TSI"]
+    NPZ[("Versioned NPZ")]
+
+    API --> IO --> WF
+    API --> PRE
+    API --> MASW
+    API --> MODE
+    API --> TSI
+    WF --> PRE --> MASW
+    PRE --> MODE --> TSI
+    PRE --> TSI
+    WF --> NPZ
+    MASW --> NPZ
+    TSI --> NPZ
+```
+
+`Wavefield` is the shared data boundary. Ingestion normalizes and validates ObsPy traces once; downstream modules then operate on the same pairs, distances, sampling rate, and time axis. Applications should import public interfaces from `tsi_denoising`, not implementation modules.
+
+#### 5.2 Core workflow
+
+```mermaid
+flowchart LR
+    SAC["SAC pair ANC"] --> VALIDATE["Read, normalize, and validate"]
+    VALIDATE --> PREP["Shared preprocessing"]
+    PREP --> DISP["Wavefield and MASW diagnosis"]
+    DISP --> DECISION{"One dominant mode in the target band?"}
+    DECISION -->|"Yes"| DEMO["One-pair TSI diagnostic"]
+    DECISION -->|"No, with four components"| POL["Retrograde/prograde separation"]
+    POL --> PHASE["Reference-curve phase matching"]
+    PHASE --> DEMO
+    DEMO --> ITER["Iterative full-wavefield TSI"]
+    ITER --> QC["QC, iteration history, and NPZ results"]
+```
+
+#### 5.3 Technology stack
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| Language and packaging | Python ≥ 3.10, setuptools, `pyproject.toml` | `src`-layout package, dependency metadata, and wheel builds; CI currently checks 3.10 and 3.12 |
+| Seismic data | ObsPy ≥ 1.4 | SAC I/O, Trace/Stream metadata, and signal-processing foundations |
+| Numerical computing | NumPy ≥ 1.24, SciPy ≥ 1.10 | FFTs, filtering, interpolation, arrays, and phase operations |
+| Visualization | Matplotlib ≥ 3.7 | Wavefield, MASW, narrow-band, and iteration diagnostics |
+| Tutorial environment | JupyterLab, ipykernel, optional PyQt5 | Reproducible notebooks and optional interactive dispersion picking |
+| Engineering quality | Ruff, GitHub Actions | Basic lint and Python 3.10/3.12 wheel checks |
 
 ### 6. Scope and Limitations
 
@@ -577,7 +685,7 @@ The final continuous digit group in a station name defines its spatial number: `
 
 When a `Wavefield` is constructed or `read_sac_directory()` is called, the package removes autocorrelations, normalizes pairs to lower-numbered source toward higher-numbered receiver, removes duplicate reverse-direction records, and swaps metadata and reverses waveforms when needed. By default, it also enforces increasing distance with station number.
 
-For curved lines, two-dimensional arrays, or non-spatial numbering, read the data into an ObsPy `Stream` and construct `Wavefield(..., check_distance_order=False)`. This disables only distance-order validation.
+For curved lines, two-dimensional arrays, or non-spatial numbering, read the data into an ObsPy `Stream` and construct `Wavefield(..., check_distance_order=False)`. This disables only distance-order validation; it does not relax the other data-consistency requirements.
 
 #### 7.3 Correlation-time axis
 
@@ -645,7 +753,7 @@ Import public interfaces from `tsi_denoising`. Distances are km, velocities km/s
 | `Wavefield(stream, *, component=None, copy=True, check_distance_order=True)` | `stream` | Required non-empty ObsPy `Stream` satisfying Section 7. |
 |  | `component` | Optional metadata label such as `"ZZ"` or `"RR"`; it does not alter processing. |
 |  | `copy` | Default `True`; defensively copy traces. Use `False` only when the caller controls the input stream. |
-|  | `check_distance_order` | Default `True`; enforce compatible number and distance ordering. |
+|  | `check_distance_order` | Default `True`; enforce compatible number and distance ordering. Set it to `False` for curved or two-dimensional arrays. |
 | `read_sac_directory(directory, pattern=None, *, component=None)` | `directory` | Required SAC root directory; recursively returns a validated, normalized `Wavefield`. |
 |  | `pattern` | One wildcard or an iterable of wildcards; common SAC suffixes are matched by default. |
 |  | `component` | Optional component label; the directory name is used when omitted. |
@@ -653,8 +761,9 @@ Import public interfaces from `tsi_denoising`. Distances are km, velocities km/s
 |  | `fmin`, `fmax` | Zero-phase band-pass limits; require `0 < fmin < fmax < Nyquist`. |
 |  | `vmin`, `vmax` | Distance-dependent velocity-window bounds; the causal window spans `distance / vmax` to `distance / vmin`. |
 |  | `taper_fraction` | Cosine-taper fraction at both window edges; must be between 0 and 0.5. |
+| `Wavefield.print(label="Wavefield", *, status=None)` | `label`, `status` | Print station, pair, sampling, time-axis, and distance summaries; `status` can describe cache or processing state. |
 
-`Wavefield.preprocess()` accepts the same parameters but replaces the object's data in place. Use `preprocess_stream()` to preserve the input wavefield.
+`Wavefield.preprocess()` accepts the same parameters, replaces the object's data in place, and returns the object itself. Use `preprocess_stream()` to preserve the input wavefield.
 
 #### 9.2 MASW
 
@@ -666,6 +775,7 @@ Import public interfaces from `tsi_denoising`. Distances are km, velocities km/s
 |  | `padding_factor` | Integer FFT zero-padding multiplier of at least 1; it refines frequency sampling, not physical resolution. |
 |  | `dist_threshold` | Minimum pair distance included in imaging. |
 | `MASW.compute(n_jobs=1)` | `n_jobs` | Number of worker processes for frequency rows. Start with 1 before increasing it. |
+| `MASW.print(label="MASW")` | `label` | Print the computed grid span and strongest normalized sample. Compute or load a completed result first. |
 | `compute_masw(wavefield, velomin=0.2, velomax=2.5, fmin=0.5, fmax=5.0, padding_factor=5, *, velocities=None, dist_threshold=0.2, n_jobs=1)` | `velomin`, `velomax` | Bounds of the 231-sample default grid when `velocities` is omitted. |
 |  | Remaining parameters | Match `MASW` and `.compute(n_jobs=...)`; returns `(velocity, frequency, amplitude)`. |
 
@@ -680,9 +790,10 @@ Import public interfaces from `tsi_denoising`. Distances are km, velocities km/s
 | `phase_match_separate(wavefield, reference_curve=None, *, fmin=0.5, fmax=5.0, t_window=0.2, keep_positive=True, return_reference=False, masw_cache_path=None, vmin=0.1, vmax=2.5, taper_fraction=0.05)` | `wavefield` | Required candidate-mode wavefield. This function does not band-pass filter its input. |
 |  | `reference_curve` | Optional `(N, 2)` array of frequency and phase velocity, or a `(frequency, velocity)` pair. When omitted, a cached or newly computed MASW image is displayed for picking. |
 |  | `fmin`, `fmax`, `t_window` | Phase-matching band and positive Gaussian time-window width. |
-|  | `keep_positive` | Default `True`; retain the positive-time branch. Use `False` to retain the negative-time branch. |
+|  | `keep_positive` | Default `True`; retain the positive-time branch and attenuate the negative-time branch. Use `False` for the reverse treatment. |
 |  | `return_reference` | Default `False`; when true, return `(separated_wavefield, used_curve)`. |
 |  | `masw_cache_path` | Optional computed MASW NPZ. It is mutually exclusive with `reference_curve`. |
+| `print_reference_curve(reference_curve, label="Reference curve")` | `reference_curve`, `label` | Validate and print point count plus frequency and phase-velocity spans. |
 
 #### 9.4 TSI denoising and results
 
@@ -696,12 +807,16 @@ Import public interfaces from `tsi_denoising`. Distances are km, velocities km/s
 |  | `periods`, `time_limits` | Diagnostic narrow-band periods and displayed correlation-time range. |
 | `denoise_wavefield_iteratively(wavefield, example_pair, *, threshold, first_iteration_convolution, max_iterations=6, sqrt_spectrum=True, taper_output=False, fmin=0.5, fmax=5.0, distance_threshold=0.0, signal_vmin=0.2, signal_vmax=2.0, window_padding=0.2, n_jobs=1)` | `wavefield`, `example_pair` | Required target wavefield and representative pair; each output iteration is peak normalized. |
 |  | `threshold` | Required non-negative whole-wavefield relative-L2 stopping threshold. |
-|  | `first_iteration_convolution` | Required Boolean controlling inner convolutions only in the first iteration; later iterations always include them. |
+|  | `first_iteration_convolution` | Required Boolean controlling inner convolutions in the first iteration. When false, target pairs farther than two thirds of the array's maximum pair distance skip interferometric stacking and receive an all-NaN waveform in that iteration; later iterations enable convolution and retry them. |
 |  | `max_iterations`, `n_jobs` | Maximum completed iterations (default 6) and worker-process count (default 1). |
+|  | `sqrt_spectrum`, `taper_output`, `fmin`, `fmax` | `sqrt_spectrum` applies in every iteration; `taper_output=True` and its output band apply only to the first iteration. Later iterations do not repeat the velocity taper or band-pass filter. |
 |  | `distance_threshold`, `signal_vmin`, `signal_vmax`, `window_padding` | Candidate-stack minimum distance and signal-window bounds; defaults are 0 km, 0.2 km/s, 2.0 km/s, and 0.2 s. |
-| `plot_denoised_result(wavefield, result, *, periods=(0.8, 0.3), time_limits=(-2.0, 8.0), jitter_duplicate_distances=True)` | `wavefield`, `result` | Plot narrow-band input/output wavefields and iteration history. The remaining parameters set periods, time limits, and duplicate-distance jitter. |
+| `plot_denoised_result(wavefield, result, *, periods=(0.8, 0.3), time_limits=(-2.0, 8.0), jitter_duplicate_distances=True)` | `wavefield`, `result` | Plot narrow-band input/output wavefields, the representative pair, and iteration history. |
+|  | `periods`, `time_limits`, `jitter_duplicate_distances` | Set the narrow-band periods, displayed time window, and stable small offsets for records at identical distances. |
 
-`denoise_wavefield_iteratively()` returns `DenoisingResult`. Its `iterations`, `relative_changes`, `converged`, and `stop_reason` report the completed count, change history, convergence state, and either `"threshold"` or `"max_iterations"`.
+`denoise_wavefield_iteratively()` returns `DenoisingResult`. Its `iterations`, `relative_changes`, `converged`, and `stop_reason` report the completed count, change history, convergence state, and either `"threshold"` or `"max_iterations"`; call `result.print(label="TSI denoising")` to print this diagnostic summary.
+
+An all-NaN row means that no denoised result was available for that pair in the corresponding iteration. Partial-NaN rows and infinities remain invalid. All-NaN rows are treated as zero when calculating the whole-wavefield relative L2 change. With one iteration and first-iteration convolution disabled, pairs beyond the distance limit remain all-NaN in the final wavefield.
 
 ### 10. NPZ Persistence
 
@@ -710,24 +825,37 @@ Import public interfaces from `tsi_denoising`. Distances are km, velocities km/s
 | Object | Save and load | Behavior |
 |---|---|---|
 | `Wavefield` | `.save(path, overwrite=False)` / `.load(path)` | Stores data, station pairs, distances, sampling metadata, component, and distance-order setting; loading validates again. |
-| `MASW` | `.save(path, overwrite=False)` / `.load(path)` | Stores configuration, wavefield, and any computed dispersion result. |
+| `MASW` | `.save(path, overwrite=False)` / `.load(path)` | Stores configuration, wavefield, and any computed dispersion result; an uncomputed object can also be saved. |
 | `DenoisingResult` | `.save(base_path, overwrite=False)` / `.load(base_path)` | Writes `<name>_wavefield.npz` and `<name>_info.npz`. |
 
 All save interfaces require an existing parent directory and refuse overwriting by default. Pass `overwrite=True` only when replacement is intentional.
 
 ### 11. Tutorials
 
+- [Tutorial overview](tutorial/README.md)
+- [MARS DAS case notes](tutorial/MARS_DAS/README.md)
+- [RR Array case notes](tutorial/RR_Array/README.md)
 - [RR Array notebook](tutorial/RR_Array/run_example_RR_Array.ipynb)
 - [MARS DAS notebook](tutorial/MARS_DAS/run_example_MARS_DAS.ipynb)
 
 The root README covers common interfaces and workflows. The two tutorial notebooks cover data context, parameter selection, physical interpretation, QC, and expected figures.
 
-### 12. Performance and Reproducibility
+### 12. Performance, Development, and Reproducibility
 
 - `MASW.compute(n_jobs=...)` and `denoise_wavefield_iteratively(n_jobs=...)` support multiprocessing. Start at `n_jobs=1`, then increase only as CPU and memory allow.
 - First-pass ingestion, preprocessing, MASW, and iterative denoising can take time. Save reusable tutorial NPZ products under `processed/`.
 - Four-component inputs must use identical preprocessing. Changing the frequency band, velocity window, polarization formula, reference curve, distance threshold, or TSI settings requires regenerating downstream caches.
 - For a publication, record package and input-data versions, frequency and velocity ranges, the velocity grid, distance threshold, iteration threshold, and stop reason.
+
+Install the development extras and run the repository-level checks with:
+
+```bash
+python -m pip install -e ".[dev,tutorial]"
+python -m ruff check --isolated --select E4,E7,E9,F retrieve_datasets.py tutorial/_paths.py
+python -m pip wheel . --no-deps --wheel-dir /tmp/tsi-denoising-wheel
+```
+
+These checks cover basic lint for the listed scripts and wheel construction. They are not a substitute for scientific validation on the complete teaching datasets. Reproducible bug reports are welcome in [Issues](https://github.com/YuanYusung/TSI-Denoising/issues); Pull Requests should remain focused and include corresponding validation and documentation updates.
 
 ### 13. Troubleshooting
 
@@ -737,7 +865,7 @@ The error lists the fields attempted. Set `sac.kevnm` or `stats.source` for the 
 
 #### A station name has no digits, or two names resolve to one number
 
-Use unique numeric station names such as `RR010` and `RR011`. Avoid assigning distinct stations names such as `STA01` and `NODE01`, because both resolve to 1.
+Use unique numeric station names such as `RR010` and `RR011`. Avoid assigning names such as `STA01` and `NODE01` to distinct stations, because both resolve to 1.
 
 #### Distance-order validation fails
 
@@ -757,7 +885,7 @@ The upper filter frequency must be strictly below half the sampling rate. Lower 
 
 #### `%matplotlib qt` or manual dispersion-curve picking does not start
 
-Manual picking in the RR Array notebook requires PyQt5 and a local interactive graphical desktop. Use the recommended Conda environment or install the tutorial extra with `python -m pip install -e ".[tutorial]"`. In a headless environment, pass `reference_curve` to `phase_match_separate()` to skip GUI picking.
+Manual picking in the RR Array notebook requires PyQt5 and a local interactive graphical desktop. Install the tutorial extra with `python -m pip install ".[tutorial]"`. In a headless environment, pass `reference_curve` to `phase_match_separate()` to skip GUI picking.
 
 #### Saving reports that a file already exists
 
@@ -772,13 +900,17 @@ If you use this package in research, please cite:
 > *Journal of Geophysical Research: Solid Earth*, **126**, e2021JB021712.  
 > <https://doi.org/10.1029/2021JB021712>
 
-For the example data set, please also cite:
+If you use the MARS DAS example data, please also cite:
 
 > Yuan, Y., Qiu, H., Chi, B., & Qin, L. (2026).  
 > *Mitigating the Resolution–SNR Trade-Off in DAS Ambient Noise Imaging: Application to Monterey Bay*.  
 > Manuscript under review at *Journal of Geophysical Research: Solid Earth*.
 
-### 15. Authors
+### 15. License and Authors
+
+The software is released under the [MIT License](LICENSE). Observational data are not automatically covered by the software license; confirm the relevant data rights before use, redistribution, or archival publication.
+
+Authors:
 
 **Yusong Yuan**  
 China University of Geosciences (Wuhan)  

@@ -7,6 +7,28 @@ name = "tsi-denoising"
 version = "0.1.0"
 description = "Surface-wave mode separation and three-station interferometry denoising"
 readme = "README.md"
+authors = [
+    { name = "Yusong Yuan", email = "yuanyusong25@gmail.com" },
+    { name = "Hongrui Qiu", email = "qiuhongrui@gmail.com" },
+]
+license = { file = "LICENSE" }
+keywords = [
+    "surface waves",
+    "ambient noise",
+    "seismology",
+    "dense arrays",
+    "three-station interferometry",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+]
 requires-python = ">=3.10"
 dependencies = [
     "matplotlib>=3.7",
@@ -18,7 +40,19 @@ dependencies = [
 [project.optional-dependencies]
 tutorial = [
     "PyQt5>=5.15",
+    "jupyterlab>=4.0",
+    "ipykernel>=6.0",
 ]
+dev = [
+    "nbclient>=0.10",
+    "nbformat>=5.10",
+    "ruff>=0.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/YuanYusung/TSI-Denoising"
+Repository = "https://github.com/YuanYusung/TSI-Denoising"
+Issues = "https://github.com/YuanYusung/TSI-Denoising/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

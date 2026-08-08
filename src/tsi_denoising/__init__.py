@@ -16,9 +16,15 @@ Distances are expressed in km, velocities in km/s, correlation times in s,
 and frequencies in Hz unless an individual API documents otherwise.
 """
 
+from importlib.metadata import PackageNotFoundError, version
+
 from .io import read_sac_directory
 from .masw import MASW, compute_masw
-from .mode_separation import phase_match_separate, polarization_separate
+from .mode_separation import (
+    phase_match_separate,
+    polarization_separate,
+    print_reference_curve,
+)
 from .preprocessing import preprocess_stream
 from .denoising import (
     DenoisingResult,
@@ -28,12 +34,20 @@ from .denoising import (
 )
 from .wavefield import Wavefield
 
+try:
+    __version__ = version("tsi-denoising")
+except PackageNotFoundError:
+    # Source checkouts remain importable before an editable install.
+    __version__ = "0+unknown"
+
 __all__ = [
+    "__version__",
     "Wavefield",
     "MASW",
     "compute_masw",
     "polarization_separate",
     "phase_match_separate",
+    "print_reference_curve",
     "preprocess_stream",
     "read_sac_directory",
     "DenoisingResult",

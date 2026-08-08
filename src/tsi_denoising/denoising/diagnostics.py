@@ -51,7 +51,7 @@ _FONT_SIZES = {
     "annotation": 12,
 }
 _TICK_RANGE_FRACTION = 0.2
-_SPECTRUM_INSET_BOUNDS = (0.58, 0.10, 0.38, 0.32)
+_SPECTRUM_INSET_BOUNDS = (0.58, 0.055, 0.38, 0.32)
 _SPECTRUM_INSET_RELATIVE_HALF_WIDTH = 0.35
 _SPECTRUM_INSET_MIN_BINS = 4
 _DENOISED_RESULT_FIGURE_WIDTH = 12.0
@@ -116,6 +116,35 @@ def _gaussian_narrowband(
         filtered[:, 0] /= 2.0
         filtered[:, nfft // 2] = np.real(filtered[:, nfft // 2])
         output[:, :, index] = np.real(ifft(filtered, axis=-1))[:, :npts]
+    return output
+
+
+def _gaussian_narrowband_allowing_missing_rows(
+    data: np.ndarray,
+    *,
+    delta: float,
+    periods: np.ndarray,
+) -> np.ndarray:
+    """Filter finite rows while preserving all-NaN denoising placeholders."""
+    values = np.asarray(data, dtype=float)
+    if values.ndim != 2:
+        raise ValueError(
+            "narrow-band data must have shape (n_traces, n_samples)"
+        )
+    finite_rows = np.all(np.isfinite(values), axis=1)
+    missing_rows = np.all(np.isnan(values), axis=1)
+    if not np.all(finite_rows | missing_rows):
+        raise ValueError(
+            "narrow-band rows must be finite or entirely NaN"
+        )
+    filled = values.copy()
+    filled[missing_rows] = 0.0
+    output = _gaussian_narrowband(
+        filled,
+        delta=delta,
+        periods=periods,
+    )
+    output[missing_rows] = np.nan
     return output
 
 
@@ -811,12 +840,12 @@ def plot_denoised_result(
     if history.shape != (result.iterations, wavefield.n_samples):
         raise ValueError("result example_history has inconsistent shape")
     raw_filtered = _gaussian_narrowband(raw, delta=wavefield.delta, periods=periods)
-    denoised_filtered = _gaussian_narrowband(
+    denoised_filtered = _gaussian_narrowband_allowing_missing_rows(
         denoised,
         delta=wavefield.delta,
         periods=periods,
     )
-    history_filtered = _gaussian_narrowband(
+    history_filtered = _gaussian_narrowband_allowing_missing_rows(
         history,
         delta=wavefield.delta,
         periods=periods,
@@ -910,7 +939,17 @@ def plot_denoised_result(
                 bbox=dict(facecolor="black", edgecolor="none", alpha=0.55, pad=1.5),
             )
         inset.set(xlabel="Frequency (Hz)", ylabel="Normalized amplitude")
-        inset.tick_params(labelsize=8)
+        inset.xaxis.set_label_position("top")
+        inset.xaxis.tick_top()
+        inset.tick_params(
+            axis="x",
+            top=True,
+            labeltop=True,
+            bottom=False,
+            labelbottom=False,
+            labelsize=8,
+        )
+        inset.tick_params(axis="y", labelsize=8)
 
         for column, axis in enumerate(axes[row]):
             axis.set_xlim(display_tmin, display_tmax)

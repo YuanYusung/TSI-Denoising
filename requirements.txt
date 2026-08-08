@@ -1,5 +1,0 @@
-# Runtime dependencies for the TSI-Denoising package.
-matplotlib>=3.7
-numpy>=1.24
-obspy>=1.4
-scipy>=1.10

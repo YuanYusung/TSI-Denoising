@@ -169,6 +169,48 @@ class Wavefield:
         self._check_distance_order = check_distance_order
         self._pairs = tuple(trace_pair(trace) for trace in self._stream)
 
+    @classmethod
+    def _from_stream_allowing_nan_rows(
+        cls,
+        stream: Stream,
+        *,
+        component: str | None = None,
+        copy: bool = True,
+        check_distance_order: bool = True,
+    ) -> "Wavefield":
+        """Build an internal result wavefield with optional all-NaN rows.
+
+        Public input construction remains strict. The all-NaN row is reserved
+        for an unavailable denoising result; partial NaNs and infinities are
+        rejected.
+        """
+        working_stream = stream.copy() if copy else stream
+        missing_rows: list[int] = []
+        for index, trace in enumerate(working_stream):
+            values = np.asarray(trace.data, dtype=float)
+            if np.all(np.isfinite(values)):
+                continue
+            if not np.all(np.isnan(values)):
+                raise ValueError(
+                    "result waveforms must be finite or entirely NaN"
+                )
+            missing_rows.append(index)
+            trace.data = np.zeros(values.shape, dtype=float)
+
+        result = cls(
+            working_stream,
+            component=component,
+            copy=False,
+            check_distance_order=check_distance_order,
+        )
+        for index in missing_rows:
+            result._stream[index].data = np.full(
+                result.n_samples,
+                np.nan,
+                dtype=float,
+            )
+        return result
+
     @property
     def component(self) -> str | None:
         """Optional component name, such as ``ZZ`` or ``RR``."""
@@ -235,6 +277,43 @@ class Wavefield:
     def data(self) -> np.ndarray:
         """Return a new ``(n_pairs, n_samples)`` data array."""
         return np.stack([trace.data for trace in self._stream])
+
+    def print(
+        self,
+        label: str = "Wavefield",
+        *,
+        status: str | None = None,
+    ) -> None:
+        """Print compact geometry, sampling, time, and distance metadata."""
+        label = str(label).strip()
+        if not label:
+            raise ValueError("label must be a non-empty string")
+        if status is not None:
+            status = str(status).strip()
+            if not status:
+                raise ValueError("status must be a non-empty string or None")
+
+        stations = sorted(
+            {station for pair in self.pairs for station in pair}
+        )
+        station_range = (
+            f"{stations[0]}-{stations[-1]}" if stations else "<empty>"
+        )
+        status_text = f" {status};" if status is not None else ";"
+        print(
+            f"[{label}]{status_text} pairs={self.n_pairs}, "
+            f"stations={len(stations)} ({station_range}), "
+            f"samples={self.n_samples}"
+        )
+        print(
+            f"  sampling: delta={self.delta:.6f} s, "
+            f"rate={self.sampling_rate:.3f} Hz; "
+            f"time={self.time[0]:.3f}..{self.time[-1]:.3f} s"
+        )
+        print(
+            f"  distances: {self.distances.min():.4f}.."
+            f"{self.distances.max():.4f} km"
+        )
 
     def save(
         self,
@@ -307,8 +386,26 @@ class Wavefield:
         return output_path
 
     @classmethod
-    def load(cls, path: str | Path) -> "Wavefield":
+    def load(
+        cls,
+        path: str | Path,
+    ) -> "Wavefield":
         """Load and validate a wavefield saved by :meth:`save`."""
+        return cls._load(path, allow_nan_rows=False)
+
+    @classmethod
+    def _load_allowing_nan_rows(cls, path: str | Path) -> "Wavefield":
+        """Load an internal denoising result that may contain missing rows."""
+        return cls._load(path, allow_nan_rows=True)
+
+    @classmethod
+    def _load(
+        cls,
+        path: str | Path,
+        *,
+        allow_nan_rows: bool,
+    ) -> "Wavefield":
+        """Load a wavefield with the requested internal row policy."""
         input_path = Path(path)
         if not input_path.exists():
             raise FileNotFoundError(f"Wavefield file does not exist: {input_path}")
@@ -377,7 +474,12 @@ class Wavefield:
                 }
                 stream.append(trace)
 
-            return cls(
+            constructor = (
+                cls._from_stream_allowing_nan_rows
+                if allow_nan_rows
+                else cls
+            )
+            return constructor(
                 stream,
                 component=component,
                 copy=False,
@@ -496,7 +598,7 @@ class Wavefield:
 
     def copy(self) -> "Wavefield":
         """Return an independent wavefield with copied traces and metadata."""
-        return Wavefield(
+        return Wavefield._from_stream_allowing_nan_rows(
             self._stream,
             component=self.component,
             check_distance_order=self.check_distance_order,
