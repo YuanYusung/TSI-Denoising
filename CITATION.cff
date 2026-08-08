@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use TSI-Denoising in your research, please cite it using the metadata below."
+title: "TSI-Denoising: High-frequency surface-wave mode separation and three-station interferometry denoising for dense 1-D arrays"
+type: software
+version: "0.1.0"
+doi: "10.5281/zenodo.21853472"
+authors:
+  - family-names: Yuan
+    given-names: Yusong
+    orcid: "https://orcid.org/0009-0008-1138-7593"
+    affiliation: "China University of Geosciences (Wuhan); University of Science and Technology of China"
+  - family-names: Qiu
+    given-names: Hongrui
+    orcid: "https://orcid.org/0000-0002-4219-0039"
+    affiliation: "China University of Geosciences (Wuhan)"
+abstract: >-
+  TSI-Denoising is a Python package for processing ambient-noise
+  cross-correlation waveforms recorded by dense one-dimensional arrays. It
+  supports validated SAC ingestion, shared preprocessing, MASW dispersion
+  analysis, four-component Rayleigh-wave mode separation, and iterative
+  three-station interferometry denoising, with teaching workflows for the MARS
+  DAS and Ramona Reservation array examples.
+keywords:
+  - surface waves
+  - ambient noise
+  - seismology
+  - dense arrays
+  - three-station interferometry
+  - mode separation
+  - MASW
+  - distributed acoustic sensing
+license: MIT
+repository-code: "https://github.com/YuanYusung/TSI-Denoising"
