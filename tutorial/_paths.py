@@ -1,4 +1,3 @@
-#!/Users/yusong/miniforge3/bin/python
 """Resolve tutorial case paths independently of the notebook working directory."""
 
 from __future__ import annotations
