@@ -80,6 +80,7 @@ TSI-Denoising/
 │   ├── MARS_DAS/                   # Monterey 湾海底 DAS 单模态 Scholte 波案例
 │   └── RR_Array/                   # 跨 San Jacinto 断裂带密集台阵多模态瑞利波案例
 ├── retrieve_datasets.py            # 公开教学数据下载脚本
+├── retrieve_Trinode_demo.py        # 下载并安全解压 Trinode-demo 到仓库父目录
 ├── pyproject.toml                  # 包元信息及唯一依赖定义
 └── README.md                       # 中英文总入口
 ```
@@ -524,6 +525,7 @@ TSI-Denoising/
 │   ├── MARS_DAS/                   # Submarine DAS, single-mode Scholte-wave case
 │   └── RR_Array/                   # Dense fault-crossing, multimode Rayleigh-wave case
 ├── retrieve_datasets.py            # Public tutorial-data downloader
+├── retrieve_Trinode_demo.py        # Download and safely unpack Trinode-demo into the parent directory
 ├── pyproject.toml                  # Package metadata and sole dependency source
 └── README.md                       # Bilingual project entry point
 ~~~
