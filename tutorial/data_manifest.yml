@@ -1,0 +1,26 @@
+version: 1
+description: Public teaching subsets downloaded by retrieve_datasets.py.
+software_license: MIT
+data_license: The software license does not grant data rights.
+datasets:
+  mars_das:
+    case: MARS_DAS
+    input_path: tutorial/MARS_DAS/input_public
+    files: 1128
+    stations: 48
+    samples: 2501
+    sampling_rate_hz: 25.0
+    component_directories:
+      RR: tutorial/MARS_DAS/input_public/RR
+  rr_array:
+    case: RR_Array
+    input_path: tutorial/RR_Array/input_public
+    files_per_component: 253
+    stations: 23
+    samples: 4001
+    sampling_rate_hz: 50.0
+    component_directories:
+      ZZ: tutorial/RR_Array/input_public/ZZ
+      ZR: tutorial/RR_Array/input_public/ZR
+      RZ: tutorial/RR_Array/input_public/RZ
+      RR: tutorial/RR_Array/input_public/RR

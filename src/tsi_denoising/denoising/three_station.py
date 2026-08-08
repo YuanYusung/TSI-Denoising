@@ -75,18 +75,35 @@ def _scalar(archive, name: str):
     return value.item()
 
 
+def _has_only_finite_or_missing_rows(values: np.ndarray) -> bool:
+    """Return whether every waveform is finite or entirely NaN.
+
+    An all-NaN row is the denoising sentinel for a target pair that was not
+    processed in that iteration. Partial-NaN rows and infinities remain
+    invalid because they cannot be interpreted unambiguously.
+    """
+    rows = np.asarray(values, dtype=float)
+    if rows.ndim != 2:
+        return False
+    finite_rows = np.all(np.isfinite(rows), axis=1)
+    missing_rows = np.all(np.isnan(rows), axis=1)
+    return bool(np.all(finite_rows | missing_rows))
+
+
 @dataclass(frozen=True)
 class DenoisingResult:
     """Products and convergence diagnostics from iterative denoising.
 
     ``example_history`` has shape ``(iterations, n_samples)`` and contains the
     selected station pair after each completed iteration. ``relative_changes``
-    contains the corresponding whole-wavefield relative L2 changes.
+    contains the corresponding whole-wavefield relative L2 changes, treating
+    unavailable all-NaN rows as zero for that calculation.
 
     Parameters
     ----------
     final_wavefield : Wavefield
-        New normalized output wavefield from the final iteration.
+        New normalized output wavefield from the final iteration. A target
+        unavailable in that iteration is represented by an all-NaN row.
     example_pair : tuple[str, str]
         Canonically ordered pair represented by ``example_history``.
     example_history : ndarray
@@ -116,6 +133,23 @@ class DenoisingResult:
     def iterations(self) -> int:
         """Number of completed denoising iterations."""
         return int(self.relative_changes.size)
+
+    def print(self, label: str = "TSI denoising") -> None:
+        """Print iteration count, convergence state, and relative changes."""
+        label = str(label).strip()
+        if not label:
+            raise ValueError("label must be a non-empty string")
+        changes = np.array2string(
+            np.asarray(self.relative_changes, dtype=float),
+            precision=4,
+            separator=", ",
+        )
+        print(
+            f"[{label}] iterations={self.iterations}, "
+            f"converged={self.converged}, "
+            f"stop_reason={self.stop_reason}"
+        )
+        print(f"  relative changes: {changes}")
 
     def save(self, base_path: str | Path, *, overwrite: bool = False) -> tuple[Path, Path]:
         """Persist the final wavefield and diagnostics as two NPZ files.
@@ -153,8 +187,15 @@ class DenoisingResult:
             self.final_wavefield.n_samples,
         ):
             raise ValueError("example_history has inconsistent shape")
-        if changes.ndim != 1 or not np.all(np.isfinite(history)) or not np.all(np.isfinite(changes)):
-            raise ValueError("denoising diagnostics must be finite arrays")
+        if (
+            changes.ndim != 1
+            or not _has_only_finite_or_missing_rows(history)
+            or not np.all(np.isfinite(changes))
+        ):
+            raise ValueError(
+                "denoising history rows must be finite or entirely NaN, "
+                "and relative changes must be finite"
+            )
         if (
             not isinstance(self.example_pair, tuple)
             or len(self.example_pair) != 2
@@ -205,8 +246,8 @@ class DenoisingResult:
         FileNotFoundError
             If either companion archive is absent.
         ValueError
-            If the schema, array shapes, finite values, or format version are
-            invalid.
+            If the schema, array shapes, waveform-row values, or format
+            version are invalid.
         """
         wavefield_path, metadata_path = _result_paths(base_path)
         if not wavefield_path.exists():
@@ -218,7 +259,9 @@ class DenoisingResult:
             "relative_changes", "converged", "stop_reason",
         }
         try:
-            final_wavefield = Wavefield.load(wavefield_path)
+            final_wavefield = Wavefield._load_allowing_nan_rows(
+                wavefield_path
+            )
             with np.load(metadata_path, allow_pickle=False) as archive:
                 missing = sorted(required - set(archive.files))
                 if missing:
@@ -234,8 +277,15 @@ class DenoisingResult:
                 changes = np.asarray(archive["relative_changes"], dtype=float)
                 if history.shape != (changes.size, final_wavefield.n_samples):
                     raise ValueError("example_history has inconsistent shape")
-                if changes.ndim != 1 or not np.all(np.isfinite(history)) or not np.all(np.isfinite(changes)):
-                    raise ValueError("denoising diagnostics must be finite arrays")
+                if (
+                    changes.ndim != 1
+                    or not _has_only_finite_or_missing_rows(history)
+                    or not np.all(np.isfinite(changes))
+                ):
+                    raise ValueError(
+                        "denoising history rows must be finite or entirely NaN, "
+                        "and relative changes must be finite"
+                    )
                 stop_reason = str(_scalar(archive, "stop_reason"))
                 if stop_reason not in {"threshold", "max_iterations"}:
                     raise ValueError("unsupported denoising stop reason")
@@ -271,7 +321,11 @@ def _denoise_pair(
     """Denoise one pair and retain diagnostics needed by the demo plot."""
     first, second = station_pair
     target_index = context.pair_indices[station_pair]
-    target = _peak_normalize(data[target_index])
+    target_values = np.asarray(data[target_index], dtype=float)
+    if np.all(np.isnan(target_values)):
+        target = target_values.copy()
+    else:
+        target = _peak_normalize(target_values)
     distance = context.distances[target_index]
     tmin = distance / signal_vmax - window_padding
     tmax = distance / signal_vmin + window_padding
@@ -315,8 +369,18 @@ def _denoise_pair(
         if not is_cross_correlation and not include_convolution:
             continue
 
-        first_input = _peak_normalize(data[first_index])
-        second_input = _peak_normalize(data[second_index])
+        first_values = np.asarray(data[first_index], dtype=float)
+        second_values = np.asarray(data[second_index], dtype=float)
+        if not np.all(np.isfinite(first_values)):
+            if np.all(np.isnan(first_values)):
+                continue
+            raise ValueError("candidate waveform contains partial NaNs or infinities")
+        if not np.all(np.isfinite(second_values)):
+            if np.all(np.isnan(second_values)):
+                continue
+            raise ValueError("candidate waveform contains partial NaNs or infinities")
+        first_input = _peak_normalize(first_values)
+        second_input = _peak_normalize(second_values)
         if reverse_first:
             interferogram = fftconvolve(
                 second_input,
@@ -462,10 +526,14 @@ def _wavefield_from_data(
         raise ValueError(
             f"output data must have shape {expected_shape}; got {values.shape}"
         )
+    if not _has_only_finite_or_missing_rows(values):
+        raise ValueError(
+            "output rows must be finite waveforms or entirely NaN"
+        )
     stream = wavefield.stream()
     for trace, row in zip(stream, values):
         trace.data = np.asarray(row, dtype=float).copy()
-    return Wavefield(
+    return Wavefield._from_stream_allowing_nan_rows(
         stream,
         component=wavefield.component,
         copy=False,
@@ -489,6 +557,19 @@ def _denoise_pair_output(
     window_padding: float,
 ) -> tuple[int, np.ndarray]:
     """Return the output row for one target pair, suitable for Pool.map."""
+    target_index = context.pair_indices[station_pair]
+    if not include_convolution:
+        maximum_distance = float(np.max(context.distances))
+        long_pair_cutoff = (2.0 / 3.0) * maximum_distance
+        target_distance = float(context.distances[target_index])
+        if target_distance > long_pair_cutoff and not np.isclose(
+            target_distance,
+            long_pair_cutoff,
+            rtol=1e-12,
+            atol=1e-12,
+        ):
+            return target_index, np.full(data.shape[1], np.nan, dtype=float)
+
     details = _denoise_pair(
         context,
         data,
@@ -526,10 +607,16 @@ def denoise_wavefield_iteratively(
     """Iteratively denoise every trace in a one-component wavefield.
 
     The first iteration optionally includes inner-station convolutions through
-    the required ``first_iteration_convolution`` flag. Every later iteration
-    uses both outer-station cross correlations and inner-station convolutions.
-    Iteration stops when the whole-wavefield relative L2 change is no larger
-    than ``threshold`` or after ``max_iterations`` completed iterations.
+    the required ``first_iteration_convolution`` flag. When it is false,
+    target pairs farther than two thirds of the maximum pair distance are not
+    stacked and receive an all-NaN waveform for that iteration. Every later
+    iteration uses both outer-station cross correlations and inner-station
+    convolutions, skips all-NaN candidate inputs, and can recover those target
+    pairs. All-NaN rows are treated as zero only when calculating the relative
+    L2 change. ``taper_output`` applies only to the first iteration; later
+    iterations do not repeat the output taper and filter. Iteration stops when
+    the relative change is no larger than ``threshold`` or after
+    ``max_iterations`` completed iterations.
     """
     context = _build_context(wavefield)
     pair = _coerce_station_pair(example_pair, context)
@@ -582,13 +669,14 @@ def denoise_wavefield_iteratively(
             include_convolution = (
                 first_iteration_convolution if iteration == 0 else True
             )
+            iteration_taper_output = taper_output if iteration == 0 else False
             compute_output = partial(
                 _denoise_pair_output,
                 context=context,
                 data=current,
                 include_convolution=include_convolution,
                 sqrt_spectrum=sqrt_spectrum,
-                taper_output=taper_output,
+                taper_output=iteration_taper_output,
                 fmin=fmin,
                 fmax=fmax,
                 distance_threshold=distance_threshold,
@@ -604,9 +692,17 @@ def denoise_wavefield_iteratively(
             next_data = np.empty_like(current)
             for target_index, output in outputs:
                 next_data[target_index] = output
+            if not _has_only_finite_or_missing_rows(current) or not (
+                _has_only_finite_or_missing_rows(next_data)
+            ):
+                raise ValueError(
+                    "iteration rows must be finite waveforms or entirely NaN"
+                )
+            finite_current = np.where(np.isnan(current), 0.0, current)
+            finite_next = np.where(np.isnan(next_data), 0.0, next_data)
             change = float(
-                np.linalg.norm(next_data - current)
-                / max(float(np.linalg.norm(current)), EPSILON)
+                np.linalg.norm(finite_next - finite_current)
+                / max(float(np.linalg.norm(finite_current)), EPSILON)
             )
             history.append(next_data[example_index].copy())
             changes.append(change)

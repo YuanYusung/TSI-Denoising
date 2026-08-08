@@ -9,10 +9,11 @@ polarization separation combines aligned four-component correlations into
 retrograde and prograde Rayleigh-wave products.
 """
 
-from .phase_matching import phase_match_separate
+from .phase_matching import phase_match_separate, print_reference_curve
 from .polarization import polarization_separate
 
 __all__ = [
     "phase_match_separate",
     "polarization_separate",
+    "print_reference_curve",
 ]

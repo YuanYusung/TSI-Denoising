@@ -170,6 +170,31 @@ class MASW:
         self.amplitude = amplitude
         return self
 
+    def print(self, label: str = "MASW") -> None:
+        """Print the computed grid and its strongest normalized sample."""
+        label = str(label).strip()
+        if not label:
+            raise ValueError("label must be a non-empty string")
+        if self.frequency is None or self.velocity is None or self.amplitude is None:
+            raise RuntimeError("MASW must be computed before printing its summary")
+
+        peak_index = np.unravel_index(
+            np.nanargmax(self.amplitude),
+            self.amplitude.shape,
+        )
+        print(
+            f"[{label}] grid={self.amplitude.shape}; "
+            f"frequency={self.frequency[0]:.3f}.."
+            f"{self.frequency[-1]:.3f} Hz; "
+            f"velocity={self.velocity[0]:.3f}.."
+            f"{self.velocity[-1]:.3f} km/s"
+        )
+        print(
+            "  strongest normalized energy: "
+            f"f={self.frequency[peak_index[0]]:.3f} Hz, "
+            f"v={self.velocity[peak_index[1]]:.3f} km/s"
+        )
+
     def save(self, path: str | Path, *, overwrite: bool = False) -> Path:
         """Save the MASW configuration, wavefield, and optional results to NPZ."""
         if not isinstance(overwrite, bool):

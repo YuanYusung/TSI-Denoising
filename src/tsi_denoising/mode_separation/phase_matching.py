@@ -83,6 +83,24 @@ def _coerce_reference_curve(reference_curve) -> np.ndarray:
     return curve
 
 
+def print_reference_curve(
+    reference_curve,
+    label: str = "Reference curve",
+) -> None:
+    """Print the point count and frequency/velocity span of a curve."""
+    label = str(label).strip()
+    if not label:
+        raise ValueError("label must be a non-empty string")
+    values = _coerce_reference_curve(reference_curve)
+    print(
+        f"[{label}] points={len(values)}; "
+        f"frequency={values[:, 0].min():.3f}.."
+        f"{values[:, 0].max():.3f} Hz; "
+        f"velocity={values[:, 1].min():.3f}.."
+        f"{values[:, 1].max():.3f} km/s"
+    )
+
+
 def _peak_normalize(data: np.ndarray, *, epsilon: float = PEAK_EPSILON) -> np.ndarray:
     """Return a finite waveform normalized by peak amplitude or all zeros."""
     values = np.asarray(data, dtype=float)
@@ -396,4 +414,4 @@ def phase_match_separate(
     return separated
 
 
-__all__ = ["phase_match_separate"]
+__all__ = ["phase_match_separate", "print_reference_curve"]

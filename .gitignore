@@ -1,15 +1,18 @@
 .DS_Store
 __pycache__/
 *.py[cod]
+.ruff_cache/
+.ipynb_checkpoints/
 build/
+dist/
 *.egg-info/
 .venv/
-
-# Local validation code is not published with this repository.
-tests/
+.env
+*.part
 
 # Tutorial data and regenerated outputs are distributed separately.
 raw_data_inputs.tar
+public_tutorial_inputs.tar.gz.part
 tutorial/**/input/
 tutorial/**/input_public/
 tutorial/**/processed/
